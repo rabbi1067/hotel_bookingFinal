@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Food &amp; Beverage | Admin</title>
+  <style>
+    .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
+    .menu-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
+    .menu-card .mc-img{position:relative}
+    .menu-card .mc-img img{height:120px;width:100%;object-fit:cover;display:block}
+    .mc-cat{position:absolute;top:.7rem;left:.7rem;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:rgba(0,0,0,.6);color:#fff;padding:.25rem .6rem;border-radius:99px}
+    .mc-state{position:absolute;top:.7rem;right:.7rem;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:rgba(0,0,0,.72);color:#ffb3b3;padding:.25rem .6rem;border-radius:99px;border:1px solid rgba(255,150,150,.5)}
+    .menu-card.off img{filter:grayscale(.75);opacity:.55}
+    .mcard-head{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+    .mgrid-preview{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .mimg-preview{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center}
+    .mimg-preview img{width:100%;height:100%;object-fit:cover;display:block}
+    .mimg-preview.empty{background:var(--surface-2);border:2px dashed var(--border-strong)}
+    .mimg-preview .empty-hint{color:var(--muted);font-size:.85rem;text-align:center;padding:1rem}
+    .mimg-preview .rm-btn{position:absolute;top:8px;right:8px}
+    .drop-zone{border:2px dashed var(--border-strong);border-radius:12px;padding:1.1rem;text-align:center;cursor:pointer;transition:.15s;background:var(--surface)}
+    .drop-zone:hover,.drop-zone.on{border-color:var(--primary);background:var(--primary-soft)}
+    .drop-zone .icon{width:22px;height:22px;color:var(--primary)}
+    .tbl-avail{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+    .menu-search{max-width:320px;min-width:220px;margin-left:auto}
+    @media(max-width:560px){.mgrid-preview{grid-template-columns:1fr}.menu-search{width:100%;max-width:none;margin-left:0}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="af">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Dining</div><h2 style="font-family:var(--display)">Restaurant menu</h2></div>
+        <button class="btn btn-primary" id="addDish"><span data-icon="plus" class="icon" style="width:16px;height:16px"></span> Add dish</button>
+      </div>
+      <div class="row mb-3" style="gap:.6rem;flex-wrap:wrap" id="dishTabs">
+        <button class="chip-btn on" data-cat="">All</button><button class="chip-btn" data-cat="Breakfast">Breakfast</button><button class="chip-btn" data-cat="Lunch">Lunch</button><button class="chip-btn" data-cat="Dinner">Dinner</button><button class="chip-btn" data-cat="Snacks">Snacks</button><button class="chip-btn" data-cat="Drinks">Drinks</button><button class="chip-btn" data-cat="Services">Services</button>
+      </div>
+      <div class="row mb-3" style="gap:.6rem;flex-wrap:wrap">
+        <input class="input menu-search" id="dishSearch" type="search" placeholder="Search dishes..." aria-label="Search dishes">
+      </div>
+      <div class="menu-grid" id="menuGrid"></div>
+    </div>
+  </main>
+</div>
+
+<form id="dishForm" th:action="@{/admin/food-management/save}" method="post" enctype="multipart/form-data" class="hide">
+  <input type="hidden" name="id" id="dfId">
+  <input type="hidden" name="name" id="dfName">
+  <input type="hidden" name="desc" id="dfDesc">
+  <input type="hidden" name="price" id="dfPrice">
+  <input type="hidden" name="cat" id="dfCat">
+  <input type="hidden" name="img" id="dfImg">
+  <input type="hidden" name="available" id="dfAvail">
+  <input type="file" name="imageFile" id="dfImageFile" style="display:none">
+</form>
+<form id="toggleForm" method="post" class="hide"></form>
+<form id="deleteForm" method="post" class="hide"></form>
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_FOOD__ = /*[[${foodForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="javascript">
+
+  /*[# th:if="${dishSuccess} != null"]*/
+  App.toast(/*[[${dishSuccess}]]*/ '', 'success');
+  /*[/]*/
+  /*[# th:if="${dishError} != null"]*/
+  App.toast(/*[[${dishError}]]*/ '', 'error');
+  /*[/]*/
+  App.boot({guard:'staff'});
+  App.renderDashChrome('af','Food & Beverage',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Dining',href:'#'}]);
+  (function(){
+    var cat='';
+    var query='';
+    var grid=document.getElementById('menuGrid');
+    function all(){ return App.getFood(); }
+    function render(){
+      var list=all().filter(function(m){
+        var text=(m.name+' '+(m.desc||'')+' '+(m.cat||'')).toLowerCase();
+        return (!cat||m.cat===cat) && (!query||text.indexOf(query)!==-1);
+      });
+      if(!list.length){ grid.innerHTML=App.emptyState('utensils',query?'No dishes found':'No dishes here',query?'Try a different search term.':'Add a new dish to this menu.','<button class="btn btn-soft btn-sm" onclick="document.getElementById(\'addDish\').click()">Add dish</button>'); return; }
+      grid.innerHTML=list.map(function(m){
+        var off=m.available===false;
+        return '<div class="menu-card'+(off?' off':'')+'" data-id="'+m.id+'"><div class="mc-img"><img src="'+m.img+'" alt="" loading="lazy">'+(!off?'<span class="mc-cat">'+m.cat+'</span>':'<span class="mc-state">Unavailable</span>')+'</div>'+
+                '<div class="card-body" style="flex:1;display:flex;flex-direction:column;gap:.4rem;padding:1rem 1.1rem">'+
+                '<div class="mcard-head"><b>'+App.esc(m.name)+'</b><span class="tbl-avail" style="color:var(--'+(off?'danger':'success')+')">'+(off?'Off':'On menu')+'</span></div>'+
+                '<p class="text-sm" style="color:var(--muted);flex:1">'+(m.desc||'')+'</p>'+
+                '<div class="row between"><span class="strong" style="font-size:1.1rem">'+App.money(m.price)+'</span></div>'+
+                '<div class="row mt-1" style="gap:.45rem">'+
+                '<button class="btn btn-outline btn-sm grow" data-edit="'+m.id+'">Edit</button>'+
+                '<button class="btn btn-soft btn-sm" data-tog="'+m.id+'">'+(off?'Enable':'Disable')+'</button>'+
+                '<button class="btn btn-danger btn-sm" data-del="'+m.id+'">'+App.icon('trash','icon-sm')+'</button></div>'+
+                '</div></div>';
+      }).join('');
+      grid.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click',function(){ edit(all().find(function(m){return m.id===b.dataset.edit;})); }); });
+      grid.querySelectorAll('[data-tog]').forEach(function(b){ b.addEventListener('click',function(){
+        var f=document.getElementById('toggleForm');
+        f.action='/admin/food-management/'+b.dataset.tog+'/toggle';
+        f.submit();
+      }); });
+      grid.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click',function(){
+        var m=all().find(function(x){return x.id===b.dataset.del;});
+        App.openConfirm('Delete dish?','"'+App.esc(m.name)+'" will be removed from the menu.',{variant:'danger',confirmText:'Delete dish'}).then(function(ok){
+          if(!ok)return;
+          var f=document.getElementById('deleteForm');
+          f.action='/admin/food-management/'+m.id+'/delete';
+          f.submit();
+        });
+      }); });
+    }
+    function edit(m){
+      var catOpts=['Breakfast','Lunch','Dinner','Snacks','Drinks','Services'];
+      var pv=m&&m.img?m.img:'';
+      var m=openDishModal(m,catOpts,m?m.name:'',m?(m.desc||''):'',m?m.price:12,m?m.cat:'Drinks',pv,m?(m.available!==false):true);
+      m.q('[data-ok]').addEventListener('click',function(){
+        var name=m.q('#mName').value.trim(), desc=m.q('#mDesc').value.trim(), price=+m.q('#mPrice').value||0, c=m.q('#mCat').value, avail=m.q('#mAvail').checked;
+        if(!name){ m.q('#mName').closest('.field').classList.add('show-err'); return; }
+        if(price<=0){ App.toast('Enter a valid price.','warning'); return; }
+        if(!m._editing && !m.selectedFile){ App.toast('Please upload a dish image.','warning'); return; }
+        document.getElementById('dfId').value=m._editing?m._id:'';
+        document.getElementById('dfName').value=name;
+        document.getElementById('dfDesc').value=desc;
+        document.getElementById('dfPrice').value=price;
+        document.getElementById('dfCat').value=c;
+        document.getElementById('dfImg').value=(m._editing&&!m.selectedFile)?pv:'';
+        document.getElementById('dfAvail').value=avail?'true':'false';
+        var dt=new DataTransfer();
+        if(m.selectedFile)dt.items.add(m.selectedFile);
+        document.getElementById('dfImageFile').files=dt.files;
+        document.getElementById('dishForm').submit();
+      });
+    }
+    function openDishModal(existing,catOpts,name,desc,price,cat,img,avail){
+      var body='<div class="mgrid-preview">'+
+              '<div class="field" style="grid-column:1/-1"><label>Dish name</label><input class="input" id="mName" value="'+App.esc(name)+'" placeholder="e.g. Grilled Salmon"></div>'+
+              '<div class="field" style="grid-column:1/-1"><label>Description</label><input class="input" id="mDesc" value="'+App.esc(desc)+'" placeholder="Short tasty description"></div>'+
+              '<div class="field"><label>Price ($)</label><input class="input" id="mPrice" type="number" min="0" step="0.5" value="'+price+'"></div>'+
+              '<div class="field"><label>Category</label><select class="input" id="mCat">'+catOpts.map(function(c){return '<option'+(c===cat?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+              '<div class="field" style="grid-column:1/-1"><label>Dish image</label>'+
+              '<div class="mimg-preview'+(img?'':' empty')+'" id="imgPrev"><span id="imgHolder">'+(img?App.imgTag(img,'Dish photo'):'<span class="empty-hint">No image selected yet</span>')+'</span></div>'+
+              '<div class="drop-zone mt-2" id="dropZone" tabindex="0" role="button">'+App.icon('image','icon')+'<div class="text-sm strong mt-1">Click to upload</div><div class="text-xs" style="color:var(--muted)">JPG, PNG or GIF &mdash; shown on menus</div></div>'+
+              '<input type="file" accept="image/*" id="fileInput" style="display:none">'+
+              '<div class="row mt-2" style="gap:.6rem"><label class="check"><input type="checkbox" id="mAvail"'+(avail===false?'':' checked')+'><span>Available for ordering</span></label>'+
+              '<button class="btn btn-ghost btn-sm" type="button" id="rmImg" style="margin-left:auto">'+App.icon('x','icon-sm')+' Remove image</button></div>'+
+              '</div></div>';
+      var m=App.openModal('<div class="modal"><div class="modal-head"><h3>'+(existing?'Edit dish':'Add dish')+'</h3><button class="modal-x" aria-label="Close">&times;</button></div>'+
+              '<div class="modal-body">'+body+'</div>'+
+              '<div class="modal-foot"><button class="btn btn-ghost" data-c="1">Cancel</button><button class="btn btn-primary" data-ok="1">'+(existing?'Save changes':'Add dish')+'</button></div></div>',existing?'':'');
+      m._editing=!!existing; m._id=existing?existing.id:null; m.selectedFile=null;
+      var file=m.q('#fileInput'), dz=m.q('#dropZone');
+      dz.addEventListener('click',function(){ file.click(); });
+      m.q('#rmImg').addEventListener('click',function(e){ e.stopPropagation(); m.selectedFile=null; pv=''; setPrev(pv); });
+      file.addEventListener('change',function(){
+        if(!file.files||!file.files[0])return;
+        m.selectedFile=file.files[0];
+        App.readImgFile(file.files[0],function(data){ pv=data; setPrev(pv); });
+      });
+      function setPrev(src){
+        m.q('#imgHolder').innerHTML = src ? App.imgTag(src,'Dish photo') : '<span class="empty-hint">No image selected yet</span>';
+        m.q('#imgPrev').classList.toggle('empty', !src);
+      }
+      return m;
+    }
+    document.getElementById('dishTabs').addEventListener('click',function(e){
+      var b=e.target.closest('.chip-btn'); if(!b)return;
+      document.querySelectorAll('#dishTabs .chip-btn').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); cat=b.dataset.cat; render();
+    });
+    document.getElementById('dishSearch').addEventListener('input',function(e){
+      query=e.target.value.trim().toLowerCase();
+      render();
+    });
+    document.getElementById('addDish').addEventListener('click',function(){ edit(null); });
+    render();
+  })();
+</script>
+</body>
+</html>

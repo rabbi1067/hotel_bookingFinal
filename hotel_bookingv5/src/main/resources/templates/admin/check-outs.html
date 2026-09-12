@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>Check-outs | Staff</title>
+<style>
+.live-badge{border-radius:99px;padding:.22rem .7rem;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.live-badge.staying{background:var(--success-soft);color:var(--success)}
+.live-badge.checkout{background:var(--warning-soft);color:var(--warning)}
+.live-badge.due{background:var(--danger-soft);color:var(--danger)}
+.live-badge.completed{background:var(--info-soft);color:var(--info)}
+</style>
+</head>
+
+<body data-chrome="dash" data-active="sco">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Front office</div><h2 style="font-family:var(--display)">Check-outs</h2><p>Guests due to depart, in-house stays and those whose checkout time has passed.</p></div>
+
+      <div class="toolbar">
+        <div class="input-affix" style="width:260px"><span data-icon="search"></span><input class="input" id="coQ" placeholder="Search guest or room..."></div>
+        <select class="input" id="coTab" style="width:auto"><option value="duetoday">Due today</option><option value="staying">In-house</option><option value="all">All active stays</option></select>
+      </div>
+      <div class="card"><div class="table-wrap" style="border:0;box-shadow:none;border-radius:0"><table class="tbl" id="coTbl"></table></div></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+App.boot({guard:'staff'});
+App.renderDashChrome('sco','Check-outs',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Check-outs',href:'#'}]);
+(function(){
+  var st={q:'',tab:'duetoday'};
+  function render(){
+    var today=App.todayISO();
+    var all=App.getBookings().filter(function(b){ return b.status==='active'||b.status==='completed'||!!b.actualCheckInTime; });
+    var res=all.filter(function(b){
+      var live=App.liveStay(b).state;
+      if(st.tab==='duetoday'&&(b.checkOut!==today||b.status==='completed'))return false;
+      if(st.tab==='staying'&&live==='COMPLETED')return false;
+      if(st.q){ var hay=(b.guest+' '+b.roomName+' '+b.bookingId).toLowerCase(); if(hay.indexOf(st.q.toLowerCase())===-1)return false; }
+      return true;
+    }).sort(function(a,b){ return a.checkOut<b.checkOut?-1:1; });
+    var tbl=document.getElementById('coTbl');
+    if(!res.length){ tbl.innerHTML='<tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--muted)">No check-outs in this view.</td></tr>'; return; }
+    tbl.innerHTML='<thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-out</th><th>Total</th><th>Payment</th><th>Status</th><th style="text-align:right">Action</th></tr></thead><tbody>'+
+    res.map(function(b){
+      var live=App.liveStay(b).state;
+      var badge=lb(live);
+      var act=live==='COMPLETED'
+        ?'<span class="badge b-success">Checked out</span>'
+        :'<button class="btn btn-warn btn-sm" data-ok="'+b.id+'"><span data-icon="logout" class="icon" style="width:14px;height:14px"></span> Check out</button>';
+      return '<tr><td class="primary-id">'+b.bookingId+'</td><td>'+App.esc(b.guest)+'</td><td>'+App.esc(b.roomName)+'</td>'+
+      '<td>'+App.fmtDate(b.checkOut)+'</td>'+
+      '<td class="amt">'+App.money(b.totalAmount)+'</td>'+
+      '<td><span class="badge '+(b.payment==='paid'?'b-success':'b-warning')+'">'+(b.payment==='paid'?'Paid':'Unpaid')+'</span></td>'+
+      '<td>'+badge+'</td>'+
+      '<td class="actions">'+act+'</td></tr>';
+    }).join('')+'</tbody>';
+    tbl.querySelectorAll('[data-ok]').forEach(function(btn){
+      btn.addEventListener('click',function(){ cout(btn.dataset.ok); });
+    });
+  }
+  function lb(state){
+    var map={CURRENT_STAY:'staying',CHECKED_IN:'staying',CHECK_OUT_TODAY:'checkout',CHECK_OUT_DUE:'due',COMPLETED:'completed'};
+    var lbl=map[state]||'staying';
+    return '<span class="live-badge '+lbl+'">'+lbl.replace('_',' ').toUpperCase()+'</span>';
+  }
+  function cout(id){
+    var b=App.bookingById(id); if(!b)return;
+    var outstanding=(b.payment==='paid'?'<span class="badge b-success">Settled</span>':'<span class="badge b-warning">'+App.money(b.totalAmount)+' due</span>');
+    var m=App.openModal('<div class="modal"><div class="modal-head"><h3>Check out '+App.esc(b.guest)+'</h3><button class="modal-x">&times;</button></div><div class="modal-body">'+
+      '<div class="join-grid mb-3">'+
+      '<div class="join-cell"><div class="k">Guest</div><div class="v">'+App.esc(b.guest)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Room</div><div class="v">'+App.esc(b.roomName)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Check-out</div><div class="v">'+App.fmtDate(b.checkOut)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Services</div><div class="v">'+App.money(b.servicesTotal)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Total</div><div class="v">'+App.money(b.totalAmount)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Payment</div><div class="v">'+outstanding+'</div></div>'+
+      '</div>'+
+      '<p class="legal mb-2">Booking becomes <b>COMPLETED</b>, room becomes <b>CLEANING</b>, actual check-out recorded as now.</p>'+
+      '<div class="modal-foot" style="padding:0"><button class="btn btn-ghost" data-c="1">Cancel</button><button class="btn btn-danger" data-y="1">Confirm check-out</button></div></div></div>');
+    m.q('[data-c]').addEventListener('click',function(){ m.close(); });
+    m.q('[data-y]').addEventListener('click',function(){ m.close(); confirmOut(b); });
+  }
+  function confirmOut(b){
+    if(b.payment!=='paid'){
+      App.openConfirm('Unsettled balance','This guest owes '+App.money(b.totalAmount)+'. Check out anyway?').then(function(ok){
+        if(!ok)return;
+        submitCheckOut(b.id);
+      });
+      return;
+    }
+    submitCheckOut(b.id);
+  }
+  function submitCheckOut(id){
+    var form=document.createElement('form');
+    form.method='POST'; form.action='/admin/bookings/'+id+'/check-out'; form.style.display='none';
+    document.body.appendChild(form);
+    form.submit();
+  }
+  document.getElementById('coQ').addEventListener('input',App.debounce(function(){ st.q=this.value; render(); },250));
+  document.getElementById('coTab').addEventListener('change',function(){ st.tab=this.value; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
+
+

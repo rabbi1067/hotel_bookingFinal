@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Promo Codes | Admin</title>
+  <style>
+    .promo-num{font-family:var(--font);font-weight:800;background:var(--bg);border:1px dashed var(--border-strong);border-radius:9px;padding:.35rem .7rem;display:inline-block;letter-spacing:.04em}
+    .pm-filterbar{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+    .pm-filterbar .input-affix{width:250px}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="apc">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Coupons</div><h2 style="font-family:var(--display)">Promo codes</h2></div>
+        <button class="btn btn-primary" id="addPromo"><span data-icon="plus" class="icon" style="width:16px;height:16px"></span> Create promo</button>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="pm-filterbar">
+            <div class="input-affix"><span data-icon="search"></span><input class="input" id="pcSearch" placeholder="Search code or description..."></div>
+            <select class="input" id="pcStatus" style="width:auto"><option value="">All statuses</option><option>active</option><option>expired</option><option>paused</option></select>
+            <select class="input" id="pcType" style="width:auto"><option value="">All discount types</option><option value="percent">Percentage</option><option value="fixed">Fixed amount</option></select>
+            <input class="input" type="date" id="pcFrom" title="Valid on or after" style="width:auto">
+            <input class="input" type="date" id="pcTo" title="Valid until" style="width:auto">
+            <button class="btn btn-soft" id="pcReset">Reset</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:0;box-shadow:none;border-radius:0"><table class="tbl" id="promoTable"></table></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'admin'});
+  App.renderDashChrome('apc','Promo Codes',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Promo codes',href:'#'}]);
+  (function(){
+    var API='/api/admin/promo-codes';
+    var tbl=document.getElementById('promoTable');
+    var st={q:'',status:'',type:'',from:'',to:'',page:1,per:9,data:[]};
+
+    function api(url,opts){
+      return fetch(url,Object.assign({headers:{'Content-Type':'application/json'}},opts||{}))
+              .then(function(res){
+                if(!res.ok){
+                  return res.json().catch(function(){ return {}; }).then(function(body){
+                    throw new Error(body.message||'Request failed.');
+                  });
+                }
+                if(res.status===204) return null;
+                return res.text().then(function(t){ return t?JSON.parse(t):null; });
+              });
+    }
+
+    function all(){ return st.data; }
+
+    function load(){
+      return api(API).then(function(list){
+        st.data=list||[];
+        render();
+      }).catch(function(err){
+        App.toast(err.message||'Failed to load promo codes.','danger');
+      });
+    }
+
+    function statusOf(p){
+      if(p.status==='paused')return ['Paused','b-plain'];
+      if(p.status==='expired')return ['Expired','b-danger'];
+      if(p.status==='active')return ['Active','b-success'];
+      return ['Expired','b-danger'];
+    }
+    function filtered(){
+      return all().filter(function(p){
+        if(st.q){ var h=(p.code+' '+(p.desc||'')).toLowerCase(); if(h.indexOf(st.q.toLowerCase())===-1)return false; }
+        if(st.status){ var cur=statusOf(p)[0].toLowerCase(); if(cur!==st.status.toLowerCase())return false; }
+        if(st.type&&(p.type||'percent')!==st.type)return false;
+        if(st.from&&(!p.end||p.end<st.from))return false;
+        if(st.to&&(!p.end||p.end>st.to))return false;
+        return true;
+      });
+    }
+    function render(){
+      var list=filtered();
+      if(!list.length){ tbl.innerHTML='<tr><td colspan="7" style="padding:2.4rem;text-align:center;color:var(--muted)">No promo codes match your search or filters.</td></tr>'; return; }
+      tbl.innerHTML='<thead><tr><th>Code</th><th>Discount</th><th>Min. spend</th><th>Usage</th><th>Valid until</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+
+              list.map(function(p){
+                var used=p.used||0, lim=p.usageLimit||0, st2=statusOf(p);
+                var pct=lim?Math.min(100,Math.round(used/lim*100)):0;
+                return '<tr data-id="'+p.id+'">'+
+                        '<td><span class="promo-num">'+App.esc(p.code)+'</span></td>'+
+                        '<td class="strong">'+(p.type==='fixed'?App.money(p.value)+' off':p.value+'% off')+'</td>'+
+                        '<td class="text-sm">'+(p.minAmount?App.money(p.minAmount):'—')+'</td>'+
+                        '<td><div class="row" style="gap:.5rem"><div class="prog"><i style="width:'+pct+'%"></i></div><span class="text-xs" style="color:var(--muted)">'+used+(lim?' / '+lim:'')+'</span></div></td>'+
+                        '<td class="text-sm">'+(p.end?App.dateStr(p.end):'—')+'</td>'+
+                        '<td><span class="badge '+st2[1]+'">'+st2[0]+'</span></td>'+
+                        '<td class="actions">'+
+                        '<button class="btn btn-ghost btn-sm" data-edit="'+p.id+'" title="Edit">'+App.icon('edit','icon')+'</button>'+
+                        '<button class="btn btn-ghost btn-sm" data-toggle="'+p.id+'" title="'+(p.status==='expired'?'Expired — edit to reactivate':'Toggle')+'"'+(p.status==='expired'?' disabled style="opacity:.4;cursor:not-allowed"':'')+'>'+App.icon('power','icon')+'</button>'+
+                        '<button class="btn btn-danger btn-sm" data-del="'+p.id+'" title="Delete">'+App.icon('trash','icon')+'</button>'+
+                        '</td></tr>';
+              }).join('')+'</tbody>';
+      tbl.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click',function(){ edit(all().find(function(p){return String(p.id)===b.dataset.edit;})); }); });
+      tbl.querySelectorAll('[data-toggle]').forEach(function(b){ b.addEventListener('click',function(){
+        if(b.disabled)return;
+        var p=all().find(function(x){return String(x.id)===b.dataset.toggle;});
+        api(API+'/'+p.id+'/toggle',{method:'PATCH'}).then(function(){
+          App.toast(p.status==='active'?'Promo paused.':'Promo activated.');
+          load();
+        }).catch(function(err){ App.toast(err.message||'Could not update promo.','danger'); });
+      }); });
+      tbl.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click',function(){
+        var p=all().find(function(x){return String(x.id)===b.dataset.del;});
+        App.openConfirm('Delete promo?','Code "'+p.code+'" will be removed.',{variant:'danger',confirmText:'Delete'}).then(function(ok){
+          if(!ok)return;
+          api(API+'/'+p.id,{method:'DELETE'}).then(function(){
+            App.toast('Promo deleted.','info');
+            load();
+          }).catch(function(err){ App.toast(err.message||'Could not delete promo.','danger'); });
+        });
+      }); });
+    }
+    function edit(p){
+      App.openForm(p?'Edit promo':'New promo code',[
+        {id:'pCode',label:'Code',type:'text',req:true,value:p?p.code:'',placeholder:'e.g. SUMMER20'},
+        {id:'pType',label:'Type',type:'select',value:p?(p.type||'percent'):'percent',options:['percent:Percentage (%)','fixed:Fixed amount ($)']},
+        {id:'pValue',label:'Value',type:'number',req:true,value:p?p.value:10,placeholder:'10 or 25'},
+        {id:'pMin',label:'Min. spend ($)',type:'number',value:p?(p.minAmount||''):'',placeholder:'0'},
+        {id:'pLimit',label:'Usage limit',type:'number',value:p?(p.usageLimit||''):'',placeholder:'Unlimited'},
+        {id:'pStatus',label:'Status',type:'select',value:p?(p.status||'active'):'active',options:['active:Active','paused:Paused','expired:Expired']},
+        {id:'pExp',label:'Valid until',type:'date',value:p?(p.end?p.end:''):''}
+      ],p?'Save changes':'Create promo').then(function(v){
+        if(!v)return;
+        var payload={
+          code:(v.pCode||'').toUpperCase().replace(/\s+/g,''),
+          type:v.pType, value:+v.pValue||0, minAmount:+v.pMin||0,
+          usageLimit:+v.pLimit||0,
+          end:v.pExp||null,
+          status:v.pStatus||'active',
+          desc:p?p.desc:''
+        };
+        if(!payload.code){ App.toast('Promo code required.','warning'); return; }
+        var req=p?api(API+'/'+p.id,{method:'PUT',body:JSON.stringify(payload)})
+                :api(API,{method:'POST',body:JSON.stringify(payload)});
+        req.then(function(){
+          App.toast(p?'Promo updated.':'Promo created.');
+          load();
+        }).catch(function(err){ App.toast(err.message||'Could not save promo.','danger'); });
+      });
+    }
+    document.getElementById('addPromo').addEventListener('click',function(){ edit(null); });
+    document.getElementById('pcSearch').addEventListener('input',App.debounce(function(){ st.q=this.value; st.page=1; render(); },250));
+    document.getElementById('pcStatus').addEventListener('change',function(){ st.status=this.value; render(); });
+    document.getElementById('pcType').addEventListener('change',function(){ st.type=this.value; render(); });
+    document.getElementById('pcFrom').addEventListener('change',function(){ st.from=this.value; render(); });
+    document.getElementById('pcTo').addEventListener('change',function(){ st.to=this.value; render(); });
+    document.getElementById('pcReset').addEventListener('click',function(){
+      st.q=''; st.status=''; st.type=''; st.from=''; st.to=''; st.page=1;
+      ['pcSearch','pcStatus','pcType','pcFrom','pcTo'].forEach(function(id){ document.getElementById(id).value=''; });
+      render();
+    });
+    load();
+  })();
+</script>
+</body>
+</html>

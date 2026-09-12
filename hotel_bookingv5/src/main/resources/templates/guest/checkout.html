@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>Checkout | Grand Meridian Resort</title>
+<style>
+.checkout-wrap{max-width:920px;margin:0 auto;display:grid;grid-template-columns:1.3fr 1fr;gap:1.5rem;align-items:start}
+@media (max-width:900px){.checkout-wrap{grid-template-columns:1fr}}
+.pm-tabs{display:flex;gap:.6rem;margin-bottom:1.2rem;flex-wrap:wrap}
+.pm-tab{flex:1;min-width:130px;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.7rem .5rem;text-align:center;cursor:pointer;background:var(--surface);font-weight:700;font-size:.85rem;transition:.15s}
+.pm-tab.active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.pm-tab .pm-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:.4rem;vertical-align:middle}
+.pm-bkash .pm-dot{background:#e2136e}
+.pm-nagad .pm-dot{background:#f6921e}
+.pm-card .pm-dot{background:var(--primary)}
+.pm-panel{display:none}
+.pm-panel.active{display:block}
+.pay-field{margin-bottom:1rem}
+.pay-field label{display:block;font-weight:650;font-size:.85rem;margin-bottom:.35rem;color:var(--text)}
+.pay-field input{width:100%;padding:.7rem .85rem;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font-size:.95rem;font-family:var(--font);background:var(--surface);color:var(--text)}
+.pay-field input::placeholder{color:var(--muted-2)}
+.pay-field input:focus{outline:none;border-color:var(--primary)}
+.pay-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.pay-error{background:var(--danger-soft);color:var(--danger);border-radius:var(--radius-sm);padding:.7rem .9rem;font-size:.85rem;font-weight:600;margin-bottom:1rem}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.3rem;position:sticky;top:1rem}
+.summary-row{display:flex;justify-content:space-between;font-size:.9rem;padding:.4rem 0;color:var(--muted)}
+.summary-row.total{border-top:1px solid var(--border);margin-top:.5rem;padding-top:.7rem;font-weight:800;font-size:1.1rem;color:var(--text)}
+.hint{font-size:.78rem;color:var(--muted-2);margin-top:-.5rem;margin-bottom:1rem}
+</style>
+</head>
+
+<body data-chrome="dash" data-active="up">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Billing center</div><h2 style="font-family:var(--display)">Complete your payment</h2><p>Choose bKash, Nagad, or Card. No OTP step in this environment - there is no live merchant account behind these forms, so no real money moves, but every field below is really validated.</p></div>
+
+      <div class="checkout-wrap">
+        <div class="card" style="padding:1.3rem">
+          <div th:if="${payError}" class="pay-error" th:text="${payError}">Error message</div>
+
+          <div class="pm-tabs">
+            <div class="pm-tab pm-bkash active" data-tab="bkash"><span class="pm-dot"></span>bKash</div>
+            <div class="pm-tab pm-nagad" data-tab="nagad"><span class="pm-dot"></span>Nagad</div>
+            <div class="pm-tab pm-card" data-tab="card"><span class="pm-dot"></span>Card</div>
+          </div>
+
+          <div class="pm-panel active" data-panel="bkash">
+            <form id="walletFormBkash" method="post" th:action="@{/user/checkout/wallet}">
+              <input type="hidden" name="bookingId" id="bkashBookingId">
+              <input type="hidden" name="provider" value="bkash">
+              <div class="pay-field">
+                <label>bKash account number</label>
+                <input type="tel" name="phone" id="bkashPhone" placeholder="01XXXXXXXXX" maxlength="11" required>
+              </div>
+              <div class="hint">Bangladeshi mobile number, 11 digits, starting with 01.</div>
+              <div class="pay-field">
+                <label>PIN</label>
+                <input type="password" name="pin" id="bkashPin" placeholder="4-5 digit PIN" maxlength="5" required>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;background:#e2136e;border-color:#e2136e" id="bkashBtn"><span class="spin"></span><span class="lbl">Pay with bKash</span></button>
+            </form>
+          </div>
+
+          <div class="pm-panel" data-panel="nagad">
+            <form id="walletFormNagad" method="post" th:action="@{/user/checkout/wallet}">
+              <input type="hidden" name="bookingId" id="nagadBookingId">
+              <input type="hidden" name="provider" value="nagad">
+              <div class="pay-field">
+                <label>Nagad account number</label>
+                <input type="tel" name="phone" id="nagadPhone" placeholder="01XXXXXXXXX" maxlength="11" required>
+              </div>
+              <div class="hint">Bangladeshi mobile number, 11 digits, starting with 01.</div>
+              <div class="pay-field">
+                <label>PIN</label>
+                <input type="password" name="pin" id="nagadPin" placeholder="4-5 digit PIN" maxlength="5" required>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;background:#f6921e;border-color:#f6921e" id="nagadBtn"><span class="spin"></span><span class="lbl">Pay with Nagad</span></button>
+            </form>
+          </div>
+
+          <div class="pm-panel" data-panel="card">
+            <form id="cardForm" method="post" th:action="@{/user/checkout/card}">
+              <input type="hidden" name="bookingId" id="cardBookingId">
+              <div class="pay-field">
+                <label>Card number</label>
+                <input type="text" name="cardNumber" id="cardNumber" placeholder="4242 4242 4242 4242" maxlength="19" required>
+              </div>
+              <div class="hint">Test tip: 4242 4242 4242 4242 passes the checksum used here.</div>
+              <div class="pay-row">
+                <div class="pay-field">
+                  <label>Expiry (MM/YY)</label>
+                  <input type="text" name="expiry" id="cardExpiry" placeholder="12/28" maxlength="5" required>
+                </div>
+                <div class="pay-field">
+                  <label>CVV</label>
+                  <input type="password" name="cvv" id="cardCvv" placeholder="123" maxlength="4" required>
+                </div>
+              </div>
+              <div class="pay-field">
+                <label>Name on card</label>
+                <input type="text" name="cardHolder" id="cardHolder" placeholder="As printed on the card" required>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%" id="cardBtn"><span class="spin"></span><span class="lbl">Pay with Card</span></button>
+            </form>
+          </div>
+        </div>
+
+        <div class="summary-card" id="summaryCard"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+App.boot({guard:'auth'});
+(function(){
+  var params=new URLSearchParams(location.search);
+  var bookingId=params.get('bookingId');
+  var b=(App.getBookings()||[]).filter(function(x){return x.id===bookingId;})[0];
+
+  if(!b){
+    document.querySelector('.checkout-wrap').innerHTML=App.emptyState('alert','Booking not found','This booking could not be found or you do not have access to it.','');
+    return;
+  }
+
+  ['bkashBookingId','nagadBookingId','cardBookingId'].forEach(function(id){ document.getElementById(id).value=bookingId; });
+
+  document.getElementById('summaryCard').innerHTML=
+    '<h3 style="margin-top:0">'+App.esc(b.roomName)+'</h3>'+
+    '<div class="summary-row"><span>Check-in</span><span>'+App.fmtDate(b.checkIn)+'</span></div>'+
+    '<div class="summary-row"><span>Check-out</span><span>'+App.fmtDate(b.checkOut)+'</span></div>'+
+    '<div class="summary-row"><span>Nights</span><span>'+b.nights+'</span></div>'+
+    '<div class="summary-row total"><span>Total due</span><span>'+App.money(b.totalAmount)+'</span></div>';
+
+  document.querySelectorAll('.pm-tab').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      document.querySelectorAll('.pm-tab').forEach(function(t){t.classList.remove('active');});
+      document.querySelectorAll('.pm-panel').forEach(function(p){p.classList.remove('active');});
+      tab.classList.add('active');
+      document.querySelector('[data-panel="'+tab.dataset.tab+'"]').classList.add('active');
+    });
+  });
+
+  function digitsOnly(v){ return v.replace(/\D/g,''); }
+
+  ['bkashPhone','nagadPhone'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',function(){ this.value=digitsOnly(this.value).slice(0,11); });
+  });
+  ['bkashPin','nagadPin'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',function(){ this.value=digitsOnly(this.value).slice(0,5); });
+  });
+  document.getElementById('cardNumber').addEventListener('input',function(){
+    var digits=digitsOnly(this.value).slice(0,16);
+    this.value=digits.replace(/(.{4})/g,'$1 ').trim();
+  });
+  document.getElementById('cardCvv').addEventListener('input',function(){ this.value=digitsOnly(this.value).slice(0,4); });
+  document.getElementById('cardExpiry').addEventListener('input',function(){
+    var d=digitsOnly(this.value).slice(0,4);
+    this.value=d.length>2?d.slice(0,2)+'/'+d.slice(2):d;
+  });
+
+  function lockButton(id){
+    var btn=document.getElementById(id); btn.classList.add('loading'); btn.disabled=true;
+  }
+  document.getElementById('walletFormBkash').addEventListener('submit',function(){ lockButton('bkashBtn'); });
+  document.getElementById('walletFormNagad').addEventListener('submit',function(){ lockButton('nagadBtn'); });
+  document.getElementById('cardForm').addEventListener('submit',function(){ lockButton('cardBtn'); });
+})();
+</script>
+</body>
+</html>

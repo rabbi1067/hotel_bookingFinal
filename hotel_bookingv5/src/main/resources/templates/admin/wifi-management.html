@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>WiFi Management | Admin</title>
+  <style>
+    .wifi-hero{background:var(--grad);border-radius:var(--radius);padding:1.6rem 1.8rem;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap}
+    .wifi-hero .ssid{font-family:var(--mono);font-weight:800;font-size:1.7rem;letter-spacing:-.02em}
+    .wifi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:1.4rem}
+    .wifi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.15rem;box-shadow:var(--shadow-sm)}
+    .wifi-card .wc-num{font-size:1.5rem;font-weight:800;font-family:var(--display)}
+    .wifi-card .wc-lab{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+    .qr-box{background:#fff;border-radius:14px;padding:1rem;display:inline-block}
+    body[data-chrome="dash"] .app main .page-wrap{width:100% !important;max-width:none !important;padding-left:clamp(1rem,3vw,3rem);padding-right:clamp(1rem,3vw,3rem);box-sizing:border-box}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="wf">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap" style="max-width:860px">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Network</div><h2 style="font-family:var(--display)">Guest WiFi</h2></div>
+      </div>
+      <div class="wifi-hero"><div><div class="text-sm" style="opacity:.85">Primary network</div><div class="ssid" th:text="${wifi.ssid}">HotelWiFi</div></div><div><span class="badge b-soft" style="background:rgba(255,255,255,.18);color:#fff">Shared guest network</span></div></div>
+      <div class="wifi-grid" id="wifiStats"></div>
+      <div class="card">
+        <div class="card-head"><h3>WiFi settings</h3><div class="row" style="gap:.5rem"><button type="button" class="btn btn-outline btn-sm" id="editWifi">Edit</button><button type="button" class="btn btn-primary btn-sm" id="saveWifi" style="display:none"><span class="spin"></span><span class="lbl">Save Edit</span></button></div></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>SSID (network name)</label><input class="input" id="wSsid" th:value="${wifi.ssid}"></div>
+            <div class="field"><label>Band</label>
+              <select class="input" id="wBand">
+                <option th:selected="${wifi.band == '5 GHz'}">5 GHz</option>
+                <option th:selected="${wifi.band == '2.4 GHz'}">2.4 GHz</option>
+                <option th:selected="${wifi.band == 'Dual band'}">Dual band</option>
+              </select>
+            </div>
+            <div class="field"><label>Password</label><input class="input" id="wPass" th:value="${wifi.password}" type="text"></div>
+            <div class="field"><label>Max devices per room</label><input class="input" id="wDev" type="number" th:value="${wifi.maxDevicesPerRoom}"></div>
+            <div class="field"><label>Bandwidth per guest (Mbps)</label><input class="input" id="wBw" type="number" th:value="${wifi.bandwidthPerGuestMbps}"></div>
+            <div class="field"><label>Security</label>
+              <select class="input" id="wSec">
+                <option th:selected="${wifi.security == 'WPA2'}">WPA2</option>
+                <option th:selected="${wifi.security == 'WPA3'}">WPA3</option>
+                <option th:selected="${wifi.security == 'Open (no password)'}">Open (no password)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mt-3" style="gap:1.4rem;flex-wrap:wrap">
+            <label class="toggle"><input type="checkbox" id="wPortal" th:checked="${wifi.captivePortalEnabled}"><span class="track"></span> Captive portal (login page)</label>
+            <label class="toggle"><input type="checkbox" id="wLimit" th:checked="${wifi.bandwidthLimitEnabled}"><span class="track"></span> Enforce per-guest bandwidth</label>
+          </div>
+          <div class="divider my-3"></div>
+          <div class="row between wrap">
+            <div><div class="strong">Guests sign-in screen</div><div class="text-sm" style="color:var(--muted)">Shown on the portal — scans a QR at the front desk.</div></div>
+            <div class="qr-box" style="text-align:center"><div style="font-size:2.6rem;font-family:var(--mono);font-weight:800;letter-spacing:.02em;background:repeating-linear-gradient(45deg,#0d3a36 0 6px,#e6f2f0 6px 12px);width:132px;height:132px;display:flex;align-items:center;justify-content:center;color:#fff;border-radius:8px;margin:0 auto">GM</div><div class="text-xs mt-1" style="color:var(--muted)">mock QR</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'staff'});
+  App.renderDashChrome('aw','WiFi Management',[{label:'Dashboard',href:'/admin/dashboard'},{label:'WiFi',href:'#'}]);
+  (function(){
+    var editBtn=document.getElementById('editWifi');
+    var saveBtn=document.getElementById('saveWifi');
+    var editFields=[document.getElementById('wSsid'),document.getElementById('wBand'),document.getElementById('wPass'),document.getElementById('wDev'),document.getElementById('wBw'),document.getElementById('wSec'),document.getElementById('wPortal'),document.getElementById('wLimit')];
+    function setEditMode(enabled){
+      editFields.forEach(function(field){field.disabled=!enabled;});
+      editBtn.style.display=enabled?'none':'';
+      saveBtn.style.display=enabled?'':'none';
+    }
+    setEditMode(false);
+    editBtn.addEventListener('click',function(){setEditMode(true);});
+    document.getElementById('wifiStats').innerHTML=[
+      ['Devices online',App.getBookings().filter(function(b){return b.status==='active';}).length,'devices'],
+      ['Available channels','3','channels'],
+      ['Uptime','99.9%','this month'],
+      ['Peak bandwidth','86 Mbps','today']
+    ].map(function(x){ return '<div class="wifi-card"><div class="wc-lab">'+x[0]+'</div><div class="wc-num">'+x[1]+'</div><div class="text-sm" style="color:var(--muted)">'+x[2]+'</div></div>'; }).join('');
+    document.getElementById('saveWifi').addEventListener('click',function(){
+      var b=this; b.classList.add('loading'); b.disabled=true;
+      var form=document.createElement('form');
+      form.method='POST'; form.action='/admin/wifi-management/save'; form.style.display='none';
+      function addField(name,value){ var i=document.createElement('input'); i.type='hidden'; i.name=name; i.value=value; form.appendChild(i); }
+      addField('ssid',document.getElementById('wSsid').value.trim());
+      addField('password',document.getElementById('wPass').value.trim());
+      addField('band',document.getElementById('wBand').value);
+      addField('maxDevices',document.getElementById('wDev').value);
+      addField('bandwidth',document.getElementById('wBw').value);
+      addField('security',document.getElementById('wSec').value);
+      addField('portalEnabled',document.getElementById('wPortal').checked);
+      addField('limitEnabled',document.getElementById('wLimit').checked);
+      document.body.appendChild(form);
+      form.submit();
+    });
+  })();
+</script>
+</body>
+</html>

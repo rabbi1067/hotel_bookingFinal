@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>Settings</title>
+<style>
+.set-item{display:flex;align-items:center;gap:1rem;padding:.95rem 0;border-bottom:1px solid var(--border)}
+.set-item:last-child{border-bottom:0}
+.set-item .si-main{flex:1}
+.set-item .si-t{font-weight:650;font-size:.92rem}
+.set-item .si-d{font-size:.8rem;color:var(--muted);margin-top:.15rem}
+.dan{color:#dc2626;border-color:#fecaca}
+.dan:hover{background:#fef2f2}
+.switch{position:relative;width:44px;height:24px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch .sl{position:absolute;inset:0;background:var(--bg);border:1px solid var(--border);border-radius:99px;cursor:pointer;transition:.15s}
+.switch .sl:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.15s}
+.switch input:checked + .sl:before{transform:translateX(20px)}
+.switch input:checked + .sl{background:var(--primary);border-color:var(--primary)}
+main[data-set]{display:none}
+</style>
+</head>
+
+<body data-chrome="dash" data-active="uset">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main data-set="user" style="display:block">
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Preferences</div><h2 style="font-family:var(--display)">Settings</h2><p>Tailor notifications, appearance and how the account behaves.</p></div>
+
+      <div class="split" style="grid-template-columns:1fr;align-items:start">
+        <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="card">
+            <div class="card-head"><h3>Appearance</h3></div>
+            <div class="card-body">
+              <label class="toggle mb-3"><input type="checkbox" id="setTheme"><span class="track"></span> Dark mode</label>
+              <p class="legal">Your theme choice is saved on this device and applies across the whole app.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Notifications</h3></div>
+            <div class="card-body">
+              <label class="toggle mb-2"><input type="checkbox" id="nBook" checked><span class="track"></span> Booking updates</label>
+              <label class="toggle mb-2"><input type="checkbox" id="nPay" checked><span class="track"></span> Payment reminders</label>
+              <label class="toggle mb-2"><input type="checkbox" id="nOffer" checked><span class="track"></span> Offers &amp; promotions</label>
+              <label class="toggle"><input type="checkbox" id="nServ" checked><span class="track"></span> Room service updates</label>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Data</h3></div>
+            <div class="card-body">
+              <button class="btn btn-outline btn-sm mb-2" data-export>Export my data</button>
+              <button class="btn btn-outline btn-sm" data-reset>Reset demo data</button>
+              <p class="legal mt-2">This prototype stores data in your browser's localStorage. Exporting produces a JSON snapshot.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Currency &amp; region</h3></div>
+            <div class="card-body">
+              <div class="field"><label>Currency</label><select class="input" id="setCur"><option value="$">USD ($)</option><option value="BDT">BDT (&#2547;)</option><option value="€">EUR (&euro;)</option><option value="£">GBP (&pound;)</option></select></div>
+              <div class="field"><label>Date format</label><select class="input" id="setDate"><option>MMM d, yyyy</option><option>dd/MM/yyyy</option><option>yyyy-MM-dd</option></select></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <main data-set="staff">
+    <div class="page-wrap" style="max-width:780px">
+      <div class="section-title mb-3" style="margin:0"><div class="eyebrow">System</div><h2 style="font-family:var(--display)">Settings</h2></div>
+
+      <div class="card mb-3">
+        <div class="card-head"><h3>General</h3></div>
+        <div class="card-body">
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Hotel name</div><div class="si-d">The property name shown in the browser title</div></div>
+            <input class="input" id="sName" value="" style="width:220px">
+          </div>
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Currency</div></div>
+            <select class="input" id="sCur" style="width:150px"><option>USD ($)</option><option>EUR (€)</option><option>GBP (£)</option><option>INR (₹)</option></select>
+          </div>
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Check-in time</div></div>
+            <select class="input" id="sIn" style="width:150px"><option>12:00</option><option>14:00</option><option selected>15:00</option><option>16:00</option></select>
+          </div>
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Check-out time</div></div>
+            <select class="input" id="sOut" style="width:150px"><option>10:00</option><option selected>11:00</option><option>12:00</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-head"><h3>Booking &amp; notifications</h3></div>
+        <div class="card-body">
+          <div class="set-item"><div class="si-main"><div class="si-t">Automatic booking confirmation</div><div class="si-d">Send confirmation email the moment a booking is placed</div></div><label class="switch"><input type="checkbox" checked><span class="sl"></span></label></div>
+          <div class="set-item"><div class="si-main"><div class="si-t">Email me on each new booking</div><div class="si-d">Get a notification for every new reservation</div></div><label class="switch"><input type="checkbox" checked><span class="sl"></span></label></div>
+          <div class="set-item"><div class="si-main"><div class="si-t">Send booking reminders</div><div class="si-d">Remind guests 24 hours before check-in</div></div><label class="switch"><input type="checkbox"><span class="sl"></span></label></div>
+          <div class="set-item"><div class="si-main"><div class="si-t">Prepay deposit required</div><div class="si-d">Require a 20% deposit at time of booking</div></div><label class="switch"><input type="checkbox"><span class="sl"></span></label></div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-head"><h3>Danger zone</h3></div>
+        <div class="card-body">
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Reset prototype data</div><div class="si-d">Clear all bookings, discounts, promos and menu saved locally; restore default demo data</div></div>
+            <button class="btn btn-danger btn-sm" id="btnReset">Reset data</button>
+          </div>
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Log out of every session</div></div>
+            <button class="btn btn-outline btn-sm dan" id="btnSignoutAll">Sign out all devices</button>
+          </div>
+          <div class="set-item">
+            <div class="si-main"><div class="si-t">Delete all data</div><div class="si-d">Wipes every local record. This cannot be undone.</div></div>
+            <button class="btn btn-danger btn-sm" id="btnWipe">Delete everything</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+App.boot({guard:'auth'});
+App.renderDashChrome(App.getCurrentUser().role==='GUEST'?'uset':'aset','Settings',[{label:'Dashboard',href:App.getCurrentUser().role==='GUEST'?'/user/dashboard':'/admin/dashboard'},{label:'Settings',href:'#'}]);
+(function(){
+  var isUser=App.getCurrentUser().role==='GUEST';
+  var panes=document.querySelectorAll('main[data-set]');
+  for(var i=0;i<panes.length;i++){ panes[i].style.display=(panes[i].getAttribute('data-set')===(isUser?'user':'staff'))?'block':'none'; }
+  if(isUser)userInit(); else staffInit();
+  function userInit(){
+    var prefs=App.LS.get('hv_prefs',{theme:App.LS.get('hv_theme','light'),cur:'$',date:'MMM d, yyyy'});
+    var theme=App.LS.get('hv_theme','light');
+    document.getElementById('setTheme').checked=theme==='dark';
+    document.getElementById('setCur').value=prefs.cur||'$';
+    document.getElementById('setDate').value=prefs.date||'MMM d, yyyy';
+    document.getElementById('setTheme').addEventListener('change',function(){
+      App.LS.set('hv_theme',this.checked?'dark':'light');
+      document.documentElement.setAttribute('data-theme',this.checked?'dark':'light');
+      App.LS.set('hv_prefs',Object.assign({},prefs,{theme:this.checked?'dark':'light'}));
+      App.toast('Theme updated.');
+    });
+    document.getElementById('setCur').addEventListener('change',function(){
+      App.LS.set('hv_prefs',Object.assign({},App.LS.get('hv_prefs',{}),{cur:this.value}));
+      App.toast('Currency preference saved.');
+    });
+    document.getElementById('setDate').addEventListener('change',function(){
+      App.LS.set('hv_prefs',Object.assign({},App.LS.get('hv_prefs',{}),{date:this.value}));
+      App.toast('Date format saved.');
+    });
+    document.querySelector('[data-export]').addEventListener('click',function(){
+      var snap={books:App.getBookings(),users:App.getUsers(),rooms:App.getRooms(),promos:App.getPromotions(),codes:App.getPromoCodes(),orders:App.getOrders(),cur:App.getCurrentUser()};
+      var blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grand-meridian-data.json'; a.click();
+      App.toast('Data exported.');
+    });
+    document.querySelector('[data-reset]').addEventListener('click',function(){
+      App.openConfirm('Reset demo data?','This clears bookings, favorites and content kept in this browser and restores the original demo data.').then(function(ok){
+        if(!ok)return;
+        App.toast('Demo data reset.','info');
+        setTimeout(function(){ var keys=['hv_']; Object.keys(localStorage).forEach(function(k){ if(k.indexOf('hv_')===0)localStorage.removeItem(k); }); location.reload(); },700);
+      });
+    });
+  }
+  function staffInit(){
+    document.getElementById('btnReset').addEventListener('click',function(){
+      App.openConfirm('Reset demo data?','All locally saved changes will be replaced with the default demo dataset.').then(function(ok){
+        if(!ok)return;
+        ['hv_rooms','hv_bookings','hv_users','hv_promos','hv_promocodes','hv_food','hv_gallery','hv_contents','hv_wifi','hv_settings','hv_notifs','hv_orders','hv_search','hv_favorites','hv_cu','hv_theme','hv_seed','hv_seedbase','hv_init','hv_lastseq'].forEach(function(k){localStorage.removeItem(k);});
+        App.toast('Demo data restored.');
+      });
+    });
+    document.getElementById('btnWipe').addEventListener('click',function(){
+      App.openConfirm('Delete everything?','This permanently wipes all prototype data stored in this browser.','danger').then(function(ok){
+        if(!ok)return;
+        Object.keys(localStorage).filter(function(k){return k.indexOf('hv_')===0;}).forEach(function(k){localStorage.removeItem(k);});
+        App.toast('All data erased.','info');
+      });
+    });
+    document.getElementById('btnSignoutAll').addEventListener('click',function(){
+      App.openConfirm('Sign out everywhere?','All admin sessions on other devices will be ended.').then(function(ok){
+        if(!ok)return;
+        localStorage.removeItem('hv_cu');
+        App.toast('Signed out everywhere.');
+        setTimeout(function(){location.href='/login';},600);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
+
+

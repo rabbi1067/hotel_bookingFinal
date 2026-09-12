@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Offers &amp; Promotions | Grand Meridian Resort</title>
+  <style>
+    .offer-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);transition:.18s;display:flex;flex-direction:column}
+    .offer-card:hover{box-shadow:var(--shadow);transform:translateY(-3px)}
+    .offer-card .oc-head{padding:1.5rem 1.5rem 1.1rem;position:relative;color:#fff}
+    .offer-card .oc-head h3{color:#fff;font-family:var(--display);font-size:1.4rem}
+    .offer-card .oc-head .big{font-size:2.6rem;font-weight:800;letter-spacing:-.02em;line-height:1;margin-top:.4rem}
+    .c-temp{background:linear-gradient(135deg,#0d524d,#0a3a37)}
+    .c-summer{background:linear-gradient(135deg,#7a1f3c,#bf3a5f)}
+    .c-season{background:linear-gradient(135deg,#14443f,#1e6a5e)}
+    .c-promo{background:linear-gradient(135deg,#5b2a12,#9c5a1e)}
+    .offer-strip{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .site-foot{margin-top:56px;padding:52px 0 0}
+    .site-foot .fgrid{grid-template-columns:1.8fr 1fr 1fr 1.3fr;gap:2.4rem}
+    .foot-contact li{display:flex;gap:.5rem;align-items:flex-start}
+    .foot-contact .icon{width:15px;height:15px;color:var(--accent);margin-top:2px;flex:none}
+    .foot-links a:hover{padding-left:4px}
+    @media (max-width:520px){.site-foot .fgrid{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body data-chrome="public" data-active="offers">
+<nav class="site-bar" data-site-nav></nav>
+
+<div class="container" style="padding-top:2rem">
+  <div class="breadcrumb"><a th:href="@{/}">Home</a><span class="sep">/</span><span class="cur">Offers &amp; Promotions</span></div>
+  <div class="section-title">
+    <div class="eyebrow">Limited-time savings</div>
+    <h2 style="font-family:var(--display)">Offers &amp; Promotions</h2>
+    <p>Exclusive seasonal deals, member perks and promo codes — applied automatically at checkout.</p>
+  </div>
+
+  <div id="loader">
+    <div class="sk" style="height:180px;border-radius:var(--radius-lg)"></div>
+    <div class="grid mt-3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"><div class="sk" style="height:230px"></div><div class="sk" style="height:230px"></div><div class="sk" style="height:230px"></div></div>
+  </div>
+
+  <div id="offersWrap" class="hide">
+    <div id="hotOffer"></div>
+    <div id="offersGrid" class="grid mt-4" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
+
+    <section class="block">
+      <div class="section-title"><div class="eyebrow">Active codes</div><h2 style="font-family:var(--display)">Promo Codes</h2><p>Copy a code and apply it at the booking summary.</p></div>
+      <div class="grid" id="codesGrid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))"></div>
+    </section>
+  </div>
+</div>
+
+<footer class="site-foot" id="foot">
+  <div class="container">
+    <div class="fgrid">
+      <div>
+        <div class="row" style="gap:.6rem"><span class="mark logo" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#0a3a37);color:#fff;display:inline-flex;align-items:center;justify-content:center"><span data-icon="feather" class="icon"></span></span><span class="font-display" style="font-size:1.1rem;font-weight:700" data-foot-brand>Grand Meridian Resort</span></div>
+        <p class="brand-desc" id="footAbout">A serene five-star beachfront resort crafted for restorative escapes along the Bay of Bengal.</p>
+        <div class="socials mt-3" id="footSocials">
+          <a href="#" title="Facebook"><span data-icon="share"></span></a>
+          <a href="#" title="Instagram"><span data-icon="camera"></span></a>
+          <a href="#" title="X"><span data-icon="globe"></span></a>
+          <a href="#" title="YouTube"><span data-icon="play" data-fallback="more"></span></a>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul class="foot-links">
+          <li><a th:href="@{/rooms}">Our Rooms</a></li>
+          <li><a th:href="@{/offers}">Offers &amp; Deals</a></li>
+          <li><a th:href="@{/about}">About Us</a></li>
+          <li><a th:href="@{/admin/gallery-management}">Gallery</a></li>
+          <li><a th:href="@{/contact}">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Services</h4>
+        <ul class="foot-links">
+          <li><a href="/rooms?type=Suite">Suites</a></li>
+          <li><a href="/rooms?type=Family">Family Rooms</a></li>
+          <li><a href="/rooms?type=Premium">Premium</a></li>
+          <li><a th:href="@{/user/food-services}">Dining &amp; Room Service</a></li>
+          <li><a th:href="@{/about}">Spa &amp; Wellness</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul class="foot-contact">
+          <li><span data-icon="pin"></span> <span id="footAddr">51 Marine Drive, Cox's Bazar 4700, Bangladesh</span></li>
+          <li><span data-icon="phone"></span> <a href="tel:PLACEHOLDER_PHONE" id="footPhone">+880 3421 555 100</a></li>
+          <li><span data-icon="mail"></span> <a href="mailto:PLACEHOLDER_EMAIL" id="footEmail">hello@grandmeridian.com</a></li>
+          <li><span data-icon="clock"></span> <span class="text-sm" id="footHours">Front desk open 24/7 • Reservations 8 AM – 11 PM</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom"><span>© <span id="footYear">2026</span> Grand Meridian Resort. All rights reserved.</span><span>Hotel Booking Management System — Created by Rabbi</span></div>
+  </div>
+</footer>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  window.__SERVER_PROMOS__ = /*[[${promosForJs}]]*/ [];
+  window.__SERVER_PROMOCODES__ = /*[[${promoCodesForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'public'});
+  (function(){
+    function discountLabel(p){
+      return (p.type==='fixed'?App.money(p.value):p.value+'%')+' OFF';
+    }
+
+    var promos = App.getActivePromos();
+    var allCodes = App.getPromoCodes();
+    var active=promos.filter(function(p){return p.status==='active'&&(!p.end||App.parseISO(p.end)>=App.today());});
+    var upcoming=promos.filter(function(p){return p.status==='upcoming';});
+    var all=[].concat(active,upcoming);
+
+    document.getElementById('loader').classList.add('hide');
+    document.getElementById('offersWrap').classList.remove('hide');
+
+    var hot=active[0];
+    if(hot){
+      document.getElementById('hotOffer').innerHTML='<div class="offer-hero"><div style="position:relative;z-index:2;text-align:center"><div class="tag">Limited-time offer</div><div class="big mt-2">'+App.esc(hot.title)+'<br><span style="font-size:.42em;color:#ffd97a">'+discountLabel(hot)+'</span></div><p style="color:rgba(255,255,255,.86);max-width:560px;margin:1rem auto 0">'+App.esc(hot.description||'')+'</p><div class="row mt-3" style="gap:.8rem;flex-wrap:wrap;justify-content:center">'+(hot.code?'<span class="code-chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,217,106,.6);color:#ffd97a">'+App.esc(hot.code)+'</span>':'')+'<span class="chip" style="background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25)"><span data-icon="calendar"></span> '+App.fmtDate(hot.start)+' &rarr; '+App.fmtDate(hot.end)+'</span>'+(hot.minStay?'<span class="chip" style="background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25)">Min '+hot.minStay+' nights</span>':'')+'</div><div class="mt-3" style="text-align:center"><a class="btn btn-accent btn-lg" href="/rooms">Book now</a></div></div></div>';
+      App.hydrateIcons(document.getElementById('hotOffer'));
+    } else {
+      document.getElementById('hotOffer').innerHTML=App.emptyState('gift','No active offer right now','New seasonal promotions usually arrive around major holidays. Check back soon!');
+    }
+
+    var grid=document.getElementById('offersGrid');
+    if(!all.length){ grid.innerHTML=App.emptyState('tag','No promotions yet','Promotions the admin creates will appear here automatically.'); }
+    grid.innerHTML=all.map(function(p,i){
+      var cls=i===0||p.value>=25?'c-summer':(p.status==='upcoming'?'c-season':(p.value>10?'c-promo':'c-temp'));
+      var r=p.roomId?App.roomById(p.roomId):null;
+      var rooms=r?r.name:'All room types';
+      return '<div class="offer-card"><div class="oc-head '+cls+'"><div style="font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:.85">'+App.esc(p.status==='upcoming'?'Coming soon':'Special offer')+'</div><h3>'+App.esc(p.title)+'</h3><div class="big">'+discountLabel(p)+'</div></div><div class="oc-body"><p class="text-sm" style="color:var(--muted)">'+App.esc(p.description||'')+'</p>'+
+              '<div class="offer-strip"><span class="chip"><span data-icon="calendar"></span> '+App.fmtDate(p.start)+' &rarr; '+App.fmtDate(p.end)+'</span>'+(p.minStay>1?'<span class="chip">Min '+p.minStay+' nights</span>':'')+'</div>'+
+              '<div class="text-xs" style="color:var(--muted)"><b>Applies to:</b> '+App.esc(rooms)+'</div>'+
+              '<div class="row mt-2" style="margin-top:auto;gap:.6rem">'+(p.code?'<span class="code-chip">'+App.esc(p.code)+'</span><button class="btn btn-soft btn-sm" data-copy="'+App.esc(p.code)+'">Copy</button>':'')+(p.status==='active'?'<a class="btn btn-outline btn-sm" href="/rooms">See rooms</a>':'')+'</div></div></div>';
+    }).join('');
+    App.hydrateIcons(grid);
+    grid.querySelectorAll('[data-copy]').forEach(function(b){
+      b.addEventListener('click',function(){
+        try{ navigator.clipboard.writeText(b.dataset.copy); }catch(e){}
+        b.textContent='Copied!'; App.toast('Code '+b.dataset.copy+' copied to clipboard.');
+        setTimeout(function(){ b.textContent='Copy'; },1600);
+      });
+    });
+
+    var codes=allCodes.slice(0,6);
+    document.getElementById('codesGrid').innerHTML=codes.map(function(c){
+      var val=c.type==='fixed'?App.money(c.value):c.value+'% OFF';
+      var extra=(c.minAmount?'Minimum '+App.money(c.minAmount)+' ':'');
+      var canUse=!c.usageLimit||(c.used||0)<c.usageLimit;
+      return '<div class="card card-pad" style="display:flex;flex-direction:column;gap:.5rem"><div class="row between"><span class="code-chip" style="font-size:.9rem">'+App.esc(c.code)+'</span><span class="badge '+(c.type==='fixed'?'b-info':'b-primary')+'">'+val+'</span></div>'+
+              '<p class="text-sm" style="color:var(--muted)">'+App.esc(c.desc||'')+'</p>'+
+              '<div class="text-xs" style="color:var(--muted);display:flex;gap:.4rem;flex-wrap:wrap">'+(c.end?'<span class="chip" style="padding:.2rem .5rem">Expires '+App.fmtDate(c.end)+'</span>':'')+(extra?'<span class="chip" style="padding:.2rem .5rem">'+extra+'</span>':'')+(c.usageLimit?'<span class="chip" style="padding:.2rem .5rem">Used '+(c.used||0)+'/'+c.usageLimit+'</span>':'')+'</div>'+
+              '<div class="row" style="margin-top:auto">'+(canUse?'<button class="btn btn-primary btn-sm" data-use="'+App.esc(c.code)+'" style="flex:1">Use this code</button>':'<button class="btn btn-outline btn-sm" data-copy="'+App.esc(c.code)+'" style="flex:1">Copy</button>')+'</div></div>';
+    }).join('');
+    document.getElementById('codesGrid').querySelectorAll('[data-copy]').forEach(function(b){
+      b.addEventListener('click',function(){ try{navigator.clipboard.writeText(b.dataset.copy);}catch(e){} App.toast('Code copied.'); });
+    });
+    document.getElementById('codesGrid').querySelectorAll('[data-use]').forEach(function(b){
+      b.addEventListener('click',function(){ App.saveSearch({checkin:'',checkout:'',promo:b.dataset.use}); App.toast('Code noted. Choose a room to continue.'); location.href='/rooms'; });
+    });
+  })();
+</script>
+</body>
+</html>

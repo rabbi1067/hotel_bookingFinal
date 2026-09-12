@@ -1,0 +1,306 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Profile | Grand Meridian Resort</title>
+  <meta name="description" content="Grand Meridian Resort - professional hotel booking management system">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/base.css}">
+  <style>
+    .prof-hero{display:flex;gap:1.4rem;align-items:center;background:linear-gradient(135deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.8rem;flex-wrap:wrap}
+    .prof-hero .avatar.xl{width:96px;height:96px;font-size:1.9rem;border:3px solid var(--surface);box-shadow:var(--shadow)}
+    .upload-av{position:relative;flex:none}
+    .upload-av .cam{position:absolute;bottom:-2px;right:-2px;width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;border:3px solid var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .upload-av .cam:hover{background:var(--primary-hover)}
+    .prof-grid{display:grid;grid-template-columns:330px 1fr;gap:1.4rem;align-items:start}
+    @media (max-width:1024px){.prof-grid{grid-template-columns:1fr}}
+    #profForm .input:disabled,#profForm textarea:disabled{background:var(--surface-3);color:var(--muted);cursor:not-allowed}
+    .pw-field{position:relative}
+    .pw-field input{padding-right:2.4rem}
+    .pw-toggle{position:absolute;right:.6rem;top:2.15rem;background:none;border:none;cursor:pointer;color:var(--muted);display:flex;padding:.2rem}
+    .pw-toggle:hover{color:var(--primary)}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="pro">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+
+      <!-- Flash messages -->
+      <div class="alert alert-success mb-3" th:if="${param.saved}">Profile updated successfully!</div>
+      <div class="alert alert-success mb-3" th:if="${param.photoSaved}">Profile picture updated.</div>
+
+      <div class="prof-hero mb-4">
+        <label class="upload-av">
+          <span id="proAvatar"></span>
+          <span class="cam" title="Change photo"><span data-icon="camera" style="width:16px;height:16px"></span></span>
+          <input type="file" id="avFile" accept="image/*" class="hide">
+        </label>
+        <div class="grow">
+          <h2 style="font-family:var(--display)" id="proName"></h2>
+          <div class="row mt-1" style="gap:.45rem;flex-wrap:wrap">
+            <span class="badge b-primary" id="proRole"></span>
+            <span class="badge b-success" id="proStatus"></span>
+          </div>
+          <p class="text-sm mt-2" style="color:var(--muted)">Member since <span id="proSince"></span></p>
+        </div>
+      </div>
+
+      <div class="prof-grid">
+        <aside>
+          <div class="card card-pad mb-3">
+            <h3 style="font-size:1rem;margin-bottom:.9rem">Quick links</h3>
+
+            <!-- GUEST quick links (unchanged) -->
+            <th:block th:if="${user.role.name() == 'GUEST'}">
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/user/my-bookings}"><span data-icon="bookmark"></span> My bookings</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/user/favorites}"><span data-icon="heart"></span> Favorites</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/user/payment-status}"><span data-icon="card"></span> Payments</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/user/wifi}"><span data-icon="wifi"></span> WiFi</a>
+            </th:block>
+
+            <!-- STAFF quick links -->
+            <th:block th:if="${user.role.name() == 'STAFF'}">
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/bookings}"><span data-icon="bookmark"></span> Bookings</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/rooms}"><span data-icon="grid"></span> Rooms</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/food-orders}"><span data-icon="package"></span> Food Orders</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/wifi}"><span data-icon="wifi"></span> WiFi</a>
+            </th:block>
+
+            <!-- ADMIN / SUPER_ADMIN quick links -->
+            <th:block th:if="${user.role.name() == 'ADMIN' or user.role.name() == 'SUPER_ADMIN'}">
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/dashboard}"><span data-icon="home"></span> Dashboard</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/bookings}"><span data-icon="bookmark"></span> Bookings</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/payments}"><span data-icon="card"></span> Payments</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/reports}"><span data-icon="bar-chart"></span> Reports</a>
+              <a class="row sb-link" style="justify-content:flex-start" th:href="@{/admin/settings}"><span data-icon="settings"></span> Settings</a>
+            </th:block>
+          </div>
+          <div class="card card-pad">
+            <h3 style="font-size:1rem;margin-bottom:.9rem">Account</h3>
+            <button class="btn btn-outline btn-block mb-2" type="button" id="changePassBtn"><span data-icon="lock"></span> Change password</button>
+            <button class="btn btn-danger btn-block" data-logout><span data-icon="logout"></span> Log out</button>
+          </div>
+        </aside>
+
+        <div>
+          <form class="card" id="profForm" th:object="${profileForm}" th:action="@{/user/profile/update}" method="post">
+            <input type="hidden" id="formHasErrors" th:value="${#fields.hasErrors('*')}">
+
+            <div class="card-head">
+              <h3>Personal information</h3>
+              <button class="btn btn-outline btn-sm" type="button" id="editBtn"><span data-icon="edit"></span> Edit</button>
+              <button class="btn btn-primary btn-sm hide" type="submit" id="saveBtn"><span class="spin"></span><span class="lbl">Save changes</span></button>
+            </div>
+            <div class="card-body">
+              <div class="grid" style="grid-template-columns:1fr 1fr">
+                <div class="field">
+                  <label>Full name</label>
+                  <input class="input" th:field="*{name}" disabled>
+                  <div class="err" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                </div>
+                <div class="field">
+                  <label>Email</label>
+                  <input class="input" type="email" th:value="${user.email}" readonly style="background:var(--surface-3);font-weight:600">
+                </div>
+                <div class="field">
+                  <label>Phone</label>
+                  <input class="input" th:field="*{phone}" disabled>
+                  <div class="err" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+                </div>
+                <div class="field">
+                  <label>Role</label>
+                  <input class="input" th:value="${user.role}" readonly style="background:var(--surface-3);font-weight:600">
+                </div>
+              </div>
+              <div class="field">
+                <label>Address</label>
+                <textarea class="input" th:field="*{address}" rows="2" disabled></textarea>
+                <div class="err" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+              </div>
+            </div>
+          </form>
+
+          <!-- Change password: own th:object scope, own POST route -->
+          <form class="card mt-3" id="passForm" th:object="${passwordForm}" th:action="@{/user/profile/password}" method="post">
+            <input type="hidden" id="passHasErrors" th:value="${#fields.hasErrors('*')}">
+            <div class="card-head"><h3>Change password</h3></div>
+            <div class="card-body">
+              <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+                <div class="field pw-field">
+                  <label>Current password</label>
+                  <input class="input" type="password" th:field="*{currentPassword}" autocomplete="current-password">
+                  <button type="button" class="pw-toggle" data-toggle-target="currentPassword" aria-label="Show password">
+                    <span data-icon="eye" style="width:18px;height:18px"></span>
+                  </button>
+                </div>
+                <div class="field pw-field">
+                  <label>New password</label>
+                  <input class="input" type="password" th:field="*{newPassword}" autocomplete="new-password">
+                  <button type="button" class="pw-toggle" data-toggle-target="newPassword" aria-label="Show password">
+                    <span data-icon="eye" style="width:18px;height:18px"></span>
+                  </button>
+                </div>
+                <div class="field pw-field">
+                  <label>Confirm new password</label>
+                  <input class="input" type="password" th:field="*{confirmPassword}" autocomplete="new-password">
+                  <button type="button" class="pw-toggle" data-toggle-target="confirmPassword" aria-label="Show password">
+                    <span data-icon="eye" style="width:18px;height:18px"></span>
+                  </button>
+                </div>
+              </div>
+              <button class="btn btn-outline" type="submit" id="passBtn">Update password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="javascript">
+  App.boot({guard:'auth'});
+
+  var userRole   = /*[[${user.role}]]*/ 'GUEST';
+  var userName   = /*[[${user.name}]]*/ '';
+  var userEmail  = /*[[${user.email}]]*/ '';
+  var userStatus = /*[[${user.status}]]*/ 'active';
+  var userAvatar = /*[[${user.avatar}]]*/ null;
+  var memberSinceLabel = /*[[${memberSinceLabel}]]*/ '';
+  var openPasswordSection = /*[[${openPasswordSection}]]*/ false;
+  var passwordError = /*[[${passwordError}]]*/ null;
+  var passwordChanged = /*[[${param.passwordChanged}]]*/ null;
+
+  App.renderDashChrome(userRole==='GUEST'?'upro':'apro','My Profile',[{label:'Dashboard',href:userRole==='GUEST'?'/user/dashboard':'/admin/dashboard'},{label:'Profile',href:'#'}]);
+
+  (function(){
+    document.getElementById('proName').textContent = userName;
+    document.getElementById('proRole').textContent = App.roleLabel(userRole);
+    document.getElementById('proStatus').textContent = userStatus === 'active' ? 'Active account' : 'Inactive';
+    document.getElementById('proSince').textContent = memberSinceLabel;
+    paintAvatar();
+    function paintAvatar(){
+      document.getElementById('proAvatar').innerHTML = App.avatarHTML(
+              {name:userName, email:userEmail, image:userAvatar},
+              'avatar xl ' + userRole.toLowerCase().replace('_','-')
+      );
+    }
+
+    // ---- Edit / Save toggle for Personal information ----
+    var profForm  = document.getElementById('profForm');
+    var editBtn   = document.getElementById('editBtn');
+    var saveBtn   = document.getElementById('saveBtn');
+    var editables = profForm.querySelectorAll('.input:not([readonly]), textarea:not([readonly])');
+    var hadFormErrors = document.getElementById('formHasErrors').value === 'true';
+
+    function enterEditMode(){
+      editables.forEach(function(el){ el.disabled = false; });
+      editBtn.classList.add('hide');
+      saveBtn.classList.remove('hide');
+      if (editables.length) editables[0].focus();
+    }
+    editBtn.addEventListener('click', enterEditMode);
+
+    if (hadFormErrors) {
+      enterEditMode();
+      App.toast('Please fix the highlighted fields.', 'warning');
+    }
+
+    profForm.addEventListener('submit', function(){
+      saveBtn.classList.add('loading');
+      saveBtn.disabled = true;
+    });
+
+    // ---- Change password: show/hide section toggle ----
+    var passForm = document.getElementById('passForm');
+    var passHasErrors = document.getElementById('passHasErrors').value === 'true';
+    var changePassBtn = document.getElementById('changePassBtn');
+
+    passForm.classList.add('hide');
+    changePassBtn.addEventListener('click', function(){
+      passForm.classList.toggle('hide');
+      if (!passForm.classList.contains('hide')) {
+        passForm.scrollIntoView({behavior:'smooth'});
+      }
+    });
+
+    if (openPasswordSection || passHasErrors) {
+      passForm.classList.remove('hide');
+      passForm.scrollIntoView({behavior:'smooth'});
+    }
+
+    // ---- Server-side password result toasts (right side) ----
+    if (passwordError) {
+      App.toast(passwordError, 'error');
+    }
+    if (passwordChanged) {
+      App.toast('Password updated successfully!', 'success');
+    }
+
+    // ---- Client-side validation before submit (toast, not inline) ----
+    passForm.addEventListener('submit', function(e){
+      var currentVal = passForm.querySelector('[name="currentPassword"]').value.trim();
+      var newVal     = passForm.querySelector('[name="newPassword"]').value;
+      var confirmVal = passForm.querySelector('[name="confirmPassword"]').value;
+
+      if (!currentVal) {
+        e.preventDefault();
+        App.toast('Please enter your current password.', 'error');
+        return;
+      }
+      if (!newVal || newVal.length < 6) {
+        e.preventDefault();
+        App.toast('New password must be at least 6 characters.', 'error');
+        return;
+      }
+      if (newVal !== confirmVal) {
+        e.preventDefault();
+        App.toast('New passwords do not match.', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('passBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+    });
+
+    // ---- Show/hide password value toggles ----
+    passForm.querySelectorAll('.pw-toggle').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var input = btn.previousElementSibling; // the <input>
+        var showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+        var icon = btn.querySelector('[data-icon]');
+        if (icon) icon.setAttribute('data-icon', showing ? 'eye' : 'eye-off');
+      });
+    });
+
+    // ---- Avatar upload ----
+    var avFile = document.getElementById('avFile');
+    document.querySelector('.upload-av .cam').addEventListener('click', function(){ avFile.click(); });
+    avFile.addEventListener('change', function(){
+      if(!this.files.length) return;
+      App.readImgFile(this.files[0], function(dataURL){
+        var form = new FormData();
+        form.append('avatar', dataURL);
+        fetch(/*[[@{/user/profile/avatar}]]*/ '/user/profile/avatar', { method:'POST', body:form })
+                .then(function(res){ window.location.href = res.url || window.location.href; })
+                .catch(function(){ App.toast('Could not update photo.','error'); });
+      });
+    });
+
+    document.querySelector('[data-logout]').addEventListener('click', function(){
+      App.logout ? App.logout() : (window.location.href = '/logout');
+    });
+  })();
+</script>
+</body>
+</html>

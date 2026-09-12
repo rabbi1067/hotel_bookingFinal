@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Contact Us | Grand Meridian Resort</title>
+  <style>
+    .contact-layout{display:grid;grid-template-columns:1fr 1.2fr;gap:1.6rem;align-items:start}
+    .contact-stack{display:flex;flex-direction:column;gap:1rem}
+    /* Minimal alignment fix: preserve the existing design and center only the icons. */
+    .contact-stack .info-card .ico{display:flex;align-items:center;justify-content:center;flex:none}
+    .contact-stack .info-card .ico .icon{display:block;margin:auto}
+    .socials#socials{display:flex!important;align-items:flex-start;gap:1rem!important;flex-wrap:wrap}
+    .socials#socials a{display:flex!important;flex:0 0 76px;width:76px!important;min-width:76px;height:78px!important;box-sizing:border-box;flex-direction:column;align-items:center;justify-content:flex-start;gap:.35rem;text-align:center;text-decoration:none;white-space:nowrap}
+    .socials#socials .social-icon{width:52px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text)}
+    .socials#socials .text-xs{display:block;line-height:1.2;white-space:normal}
+    .socials#socials .social-icon:hover{border-color:var(--primary);color:var(--primary)}
+    .social-brand{width:22px;height:22px;display:block;fill:currentColor}
+    .site-foot{margin-top:56px;padding:52px 0 0}
+    .site-foot .fgrid{grid-template-columns:1.8fr 1fr 1fr 1.3fr;gap:2.4rem}
+    .foot-contact li{display:flex;gap:.5rem;align-items:flex-start}
+    .foot-contact .icon{width:15px;height:15px;color:var(--accent);margin-top:2px;flex:none}
+    .foot-links a:hover{padding-left:4px}
+    @media (max-width:1024px){.contact-layout{grid-template-columns:1fr}}
+    @media (max-width:520px){.site-foot .fgrid{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body data-chrome="public" data-active="contact">
+<nav class="site-bar" data-site-nav></nav>
+
+<div class="container" style="padding-top:2rem">
+  <div class="breadcrumb"><a th:href="@{/}">Home</a><span class="sep">/</span><span class="cur">Contact</span></div>
+  <div class="section-title"><div class="eyebrow">We're here 24/7</div><h2 style="font-family:var(--display)">Contact Us</h2><p>Questions about a stay, a group booking or something else? Our team replies within a few hours.</p></div>
+
+  <div class="contact-layout">
+    <div class="contact-stack" id="infoCards"></div>
+
+    <div class="card" style="overflow:hidden">
+      <div class="card-head"><h3>Send us a message</h3><span class="sub">Average reply within 2 hours</span></div>
+      <form id="contactForm" class="card-body" novalidate>
+        <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="field"><label>Full name</label><input class="input" id="cName" placeholder="Your name"><div class="err">Please enter your name.</div></div>
+          <div class="field"><label>Email</label><input class="input" id="cEmail" type="email" placeholder="you@example.com"><div class="err">Enter a valid email.</div></div>
+        </div>
+        <div class="field"><label>Subject</label>
+          <select class="input" id="cSubj">
+            <option>Reservation inquiry</option><option>Group &amp; event booking</option><option>Feedback</option><option>Billing &amp; payments</option><option>WiFi &amp; services</option><option>Other</option>
+          </select></div>
+        <div class="field"><label>Message</label><textarea class="input" id="cMsg" placeholder="How can we help?"></textarea><div class="err">Please write a short message.</div></div>
+        <div class="row between">
+          <label class="check"><input type="checkbox" id="cCopy"> Send me a copy</label>
+          <button class="btn btn-primary btn-lg" type="submit" id="cSend"><span class="spin"></span><span class="lbl">Send message</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="map-ph" id="mapPh">
+      <div class="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lg"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+      <div><b>Grand Meridian Resort</b></div>
+      <div id="mapAddr">51 Marine Drive, Cox's Bazar 4700, Bangladesh</div>
+      <div class="text-xs">Map integration placeholder &mdash; a real map will render here on the backend build.</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="section-title"><div class="eyebrow">Follow along</div><h2 style="font-family:var(--display)">Social Media</h2><p>Day-to-day life at the resort, seasonal specials and behind-the-scenes.</p></div>
+    <div class="socials" id="socials" style="gap:1rem"></div>
+  </section>
+</div>
+
+<footer class="site-foot" id="foot">
+  <div class="container">
+    <div class="fgrid">
+      <div>
+        <div class="row" style="gap:.6rem"><span class="mark logo" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#0a3a37);color:#fff;display:inline-flex;align-items:center;justify-content:center"><span data-icon="feather" class="icon"></span></span><span class="font-display" style="font-size:1.1rem;font-weight:700" data-foot-brand>Grand Meridian Resort</span></div>
+        <p class="brand-desc" id="footAbout">A serene five-star beachfront resort crafted for restorative escapes along the Bay of Bengal.</p>
+        <div class="socials mt-3" id="footSocials"></div>
+      </div>
+      <div><h4>Explore</h4><ul class="foot-links"><li><a th:href="@{/rooms}">Our Rooms</a></li><li><a th:href="@{/offers}">Offers &amp; Deals</a></li><li><a th:href="@{/about}">About Us</a></li><li><a th:href="@{/admin/gallery-management}">Gallery</a></li><li><a th:href="@{/contact}">Contact</a></li></ul></div>
+      <div><h4>Services</h4><ul class="foot-links"><li><a href="/rooms?type=Suite">Suites</a></li><li><a href="/rooms?type=Family">Family Rooms</a></li><li><a href="/rooms?type=Premium">Premium</a></li><li><a th:href="@{/user/food-services}">Dining &amp; Room Service</a></li><li><a th:href="@{/about}">Spa &amp; Wellness</a></li></ul></div>
+      <div><h4>Contact</h4><ul class="foot-contact"><li><span data-icon="pin"></span> <span id="footAddr">51 Marine Drive, Cox's Bazar 4700, Bangladesh</span></li><li><span data-icon="phone"></span> <a href="tel:PLACEHOLDER_PHONE" id="footPhone">+880 3421 555 100</a></li><li><span data-icon="mail"></span> <a href="mailto:PLACEHOLDER_EMAIL" id="footEmail">hello@grandmeridian.com</a></li><li><span data-icon="clock"></span> <span class="text-sm" id="footHours">Front desk open 24/7 • Reservations 8 AM – 11 PM</span></li></ul></div>
+    </div>
+    <div class="foot-bottom"><span>© <span id="footYear">2026</span> Grand Meridian Resort. All rights reserved.</span><span>Hotel Booking Management System — Created by Rabbi</span></div>
+  </div>
+</footer>
+
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="none">
+
+  App.boot({guard:'public'});
+  (function(){
+    var C=App.getContents();
+    var ICONS=[['phone','Call us',C.phone,C.phone,'tel:'],['mail','Email',C.email,C.email,'mailto:'],['pin','Address','','<span style="font-size:.9rem;color:var(--text);font-weight:600">'+C.address+'</span>',''],['clock','Support hours','',C.supportHours,'']];
+    document.getElementById('infoCards').innerHTML=ICONS.map(function(i){
+      return '<div class="info-card"><div class="ico ico-'+(i[0]==='phone'?'primary':i[0]==='mail'?'accent':i[0]==='pin'?'danger':'info')+'">'+App.icon(i[0],'icon')+'</div><div><h4>'+i[1]+'</h4>'+
+              (i[2]?'<p>'+i[2]+'</p>':'')+(i[3]?('<div class="text-sm mt-1" style="color:var(--muted)">'+i[3]+'</div>'):'')+(i[4]?'<div><a href="'+i[4]+i[2]+'">'+i[2]+'</a></div>':'')+'</div></div>';
+    }).join('');
+    document.getElementById('mapAddr').textContent=C.address;
+
+    var form=document.getElementById('contactForm');
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      App.clearErrors(form);
+      var ok=App.fieldErrors([
+        {id:'cName',req:true},
+        {id:'cEmail',req:true,pattern:/^[^@\s]+@[^@\s]+\.[^@\s]+$/},
+        {id:'cMsg',req:true}
+      ]);
+      if(!ok){ App.toast('Please fix the highlighted fields.','warning'); return; }
+      var btn=document.getElementById('cSend'); btn.classList.add('loading'); btn.disabled=true;
+      setTimeout(function(){
+        btn.classList.remove('loading'); btn.disabled=false;
+        form.reset();
+        App.toast('Message sent! We\u2019ll get back to you within 2 hours.');
+      },900);
+    });
+    function socialIcon(name){
+      if(name==='facebook') return '<svg class="social-brand" viewBox="0 0 24 24"><path d="M14 8h3V4h-3c-3.3 0-5 2-5 5v3H6v4h3v4h4v-4h3.2l.8-4H13V9c0-.7.3-1 1-1Z"/></svg>';
+      if(name==='linkedin') return '<svg class="social-brand" viewBox="0 0 24 24"><path d="M5 3.8A2.2 2.2 0 1 1 5 8.2 2.2 2.2 0 0 1 5 3.8ZM3 9h4v12H3V9Zm6 0h3.8v1.6h.1c.5-.9 1.7-1.9 3.6-1.9 3.9 0 4.5 2.5 4.5 5.8V21h-4v-5.8c0-1.4 0-3.2-2-3.2s-2.3 1.5-2.3 3.1V21H9V9Z"/></svg>';
+      if(name==='github') return '<svg class="social-brand" viewBox="0 0 24 24"><path d="M12 2.5a9.5 9.5 0 0 0-3 18.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 0 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.4-1.1.6-1.3-2.2-.3-4.5-1.1-4.5-4.8 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.5 9.5 0 0 1 5.1 0c2-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.7-2.3 4.5-4.5 4.8.4.3.7.9.7 1.8v2.6c0 .3.2.6.7.5A9.5 9.5 0 0 0 12 2.5Z"/></svg>';
+      if(name==='twitter') return '<svg class="social-brand" viewBox="0 0 24 24"><path d="M5 4h4.2l3.1 4.4L16 4h3l-5.3 6.1L20 20h-4.2l-3.7-5.2L7.5 20h-3l5.7-6.7L5 4Zm3.5 2 7.8 12h1.8L10.3 6H8.5Z"/></svg>';
+      return '';
+    }
+    var sm=[['facebook','Facebook','https://www.facebook.com/fazleyrabbi1067/'],['linkedin','LinkedIn','https://www.linkedin.com/in/fazleyrabbi1067/'],['github','GitHub','https://github.com/rabbi1067'],['twitter','X (Twitter)','https://x.com/FazleRabbi56251']];
+    document.getElementById('socials').innerHTML=sm.map(function(s){
+      return '<a href="'+s[2]+'" target="_blank" rel="noopener noreferrer" title="'+s[1]+'"><span class="social-icon">'+socialIcon(s[0])+'</span><span class="text-xs mt-1">'+s[1]+'</span></a>';
+    }).join('');
+    document.getElementById('footSocials').innerHTML=sm.map(function(s){
+      return '<a href="'+s[2]+'" target="_blank" rel="noopener noreferrer" title="'+s[1]+'">'+socialIcon(s[0])+'</a>';
+    }).join('');
+    document.getElementById('footYear').textContent=new Date().getFullYear();
+  })();
+</script>
+</body>
+</html>
+
+

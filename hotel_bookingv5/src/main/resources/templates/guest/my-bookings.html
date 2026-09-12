@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>My Bookings | Grand Meridian Resort</title>
+  <style>
+    .book-card{display:flex;gap:1.1rem;padding:1.15rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);transition:.16s;flex-wrap:wrap}
+    .book-card:hover{box-shadow:var(--shadow)}
+    .book-card img.bk-img{width:132px;height:104px;border-radius:11px;object-fit:cover;flex:none}
+    .bk-meta{flex:1;min-width:220px}
+    .bk-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.7rem;flex:1;min-width:240px}
+    @media (max-width:720px){.book-card img.bk-img{width:100%;height:160px}}
+
+    /* ---- Toolbar (status tabs + search) ---- */
+    .mb-toolbar{
+      display:flex;align-items:center;justify-content:space-between;gap:1.2rem;
+      flex-wrap:wrap;
+      padding-bottom:1rem;
+      margin-bottom:1.4rem;
+      border-bottom:1px solid var(--border);
+    }
+    .mb-toolbar .tabs{
+      flex:1 1 auto;
+      min-width:0;
+      overflow-x:auto;
+      scrollbar-width:none;      /* Firefox: no visible scrollbar */
+      -ms-overflow-style:none;   /* old Edge/IE */
+      padding-bottom:2px;        /* room so focus/hover states aren't clipped */
+    }
+    .mb-toolbar .tabs::-webkit-scrollbar{ display:none; } /* Chrome/Safari: no visible scrollbar */
+    .mb-search{ flex:none; width:260px; }
+    @media (max-width:760px){
+      .mb-toolbar{ flex-direction:column; align-items:stretch; gap:.9rem; }
+      .mb-search{ width:100%; }
+    }
+
+    /* Consistent gap between booking cards regardless of base.css defaults */
+    #bList{ display:flex; flex-direction:column; gap:1rem; }
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ub">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="mb-toolbar">
+        <div class="tabs" id="statusTabs"></div>
+        <div class="input-affix mb-search"><span data-icon="search"></span><input class="input" id="bSearch" placeholder="Search bookings..."></div>
+      </div>
+      <div id="bList"></div>
+      <div id="pagerWrap" style="margin-top:1rem"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+  /*[# th:if="${bookingActionMsg} != null"]*/
+  window.__BOOKING_FLASH__ = {msg:'[[${bookingActionMsg}]]', ok:[[${bookingActionOk}]]};
+  /*[/]*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="none">
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('ub','My Bookings',[{label:'Dashboard',href:'/user/dashboard'},{label:'My Bookings',href:'#'}]);
+  (function(){
+    if(window.__BOOKING_FLASH__){ App.toast(window.__BOOKING_FLASH__.msg, window.__BOOKING_FLASH__.ok?'success':'error'); }
+    var cu=App.getCurrentUser();
+    var all=App.getBookings().filter(function(b){return b.userId===cu.id;}).sort(function(a,b){return a.checkIn<b.checkIn?1:-1;});
+    App.syncBookingNotifs(all);
+    var state={tab:'all',q:'',page:1,per:5};
+    var TABS=[['all','All'],['active','Active'],['confirmed','Confirmed'],['completed','Completed'],['pending','Pending'],['cancelled','Cancelled']];
+    var tabsEl=document.getElementById('statusTabs');
+    tabsEl.innerHTML=TABS.map(function(t){ return '<button class="'+(state.tab===t[0]?'active':'')+'" data-t="'+t[0]+'">'+t[1]+'</button>'; }).join('');
+    tabsEl.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click',function(){ state.tab=b.dataset.t; state.page=1; readTabs(); render(); });
+    });
+    function readTabs(){ tabsEl.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active',b.dataset.t===state.tab); }); }
+    document.getElementById('bSearch').addEventListener('input',App.debounce(function(){ state.q=this.value.toLowerCase(); state.page=1; render(); },250));
+
+    function filtered(){
+      var res=all.filter(function(b){
+        if(state.tab!=='all'){
+          if(state.tab==='active'&&b.status!=='active')return false;
+          if(state.tab!=='active'&&b.status!==state.tab)return false;
+        }
+        if(state.q){ var hay=(b.bookingId+' '+b.roomName+' '+b.roomType+' '+b.guest).toLowerCase(); if(hay.indexOf(state.q)===-1)return false; }
+        return true;
+      });
+      return res;
+    }
+    function render(){
+      var res=filtered();
+      var pages=Math.max(1,Math.ceil(res.length/state.per));
+      if(state.page>pages)state.page=pages;
+      var slice=res.slice((state.page-1)*state.per,state.page*state.per);
+      var el=document.getElementById('bList');
+      if(!res.length){ el.innerHTML=App.emptyState('bookmark','No bookings found','You don\u2019t have any bookings'+(state.tab!=='all'?' under this status':'')+' yet.','<a class="btn btn-primary btn-sm" th:href="@{/rooms}">Explore rooms</a>'); }
+      else el.innerHTML=slice.map(card).join('');
+      document.getElementById('pagerWrap').innerHTML=App.pagination(state.page,pages,function(p){state.page=p;render();});
+      App.initPager(document.getElementById('pagerWrap'),function(p){ state.page=p; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+    }
+    function card(b){
+      var st=statusBadge(b.status), py=payBadge(b.payment);
+      return '<article class="book-card">'+
+              '<img class="bk-img" src="'+b.roomImage+'" alt="'+App.esc(b.roomName)+'" loading="lazy" onerror="this.style.background=\'#0d3a36\'">'+
+              '<div class="bk-meta"><div class="primary-id">'+b.bookingId+'</div>'+
+              '<h3 style="font-size:1.08rem;margin:.2rem 0 .15rem">'+App.esc(b.roomName)+'</h3>'+
+              '<div class="text-sm" style="color:var(--muted)">'+App.esc(b.roomType)+' &bull; '+b.adults+' adults'+(b.children?' &bull; '+b.children+' child':(b.pets?' &bull; pet':''))+'</div>'+
+              '<div class="row mt-2" style="gap:.4rem">'+st+' '+py+'</div>'+
+              '<div class="row mt-2" style="gap:.4rem">'+
+              (b.status==='confirmed'||b.status==='pending'?'<button class="btn btn-ghost btn-sm" data-cancel="'+b.id+'">Cancel</button>':'')+
+              '<a class="btn btn-primary btn-sm" href="/user/booking-details?id='+b.id+'">View details</a></div></div>'+
+              '<div class="bk-dates">'+
+              '<div class="join-cell"><div class="k">Check-in</div><div class="v">'+App.fmtDate(b.checkIn)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Check-out</div><div class="v">'+App.fmtDate(b.checkOut)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Nights</div><div class="v">'+b.nights+'</div></div>'+
+              '<div class="join-cell"><div class="k">Total</div><div class="v">'+App.money(b.totalAmount)+'</div></div>'+
+              '</div></article>';
+    }
+    function statusBadge(s){ var map={confirmed:['b-primary','Confirmed'],active:['b-success','Active'],completed:['b-info','Completed'],pending:['b-warning','Pending'],cancelled:['b-danger','Cancelled']}; return '<span class="badge '+map[s][0]+'">'+map[s][1]+'</span>'; }
+    function payBadge(p){ return '<span class="badge '+(p==='paid'?'b-success':'b-warning')+'">'+(p==='paid'?'Paid':'Unpaid')+'</span>'; }
+    document.getElementById('bList').addEventListener('click',function(e){
+      var c=e.target.closest('[data-cancel]');
+      if(c){
+        var id=c.dataset.cancel;
+        App.openConfirm('Cancel booking?','This will cancel the booking '+find(id).bookingId+' and is not reversible.').then(function(ok){
+          if(!ok)return;
+          var form=document.createElement('form');
+          form.method='POST'; form.action='/user/bookings/'+id+'/cancel'; form.style.display='none';
+          document.body.appendChild(form);
+          form.submit();
+        });
+      }
+    });
+    function find(id){ return all.filter(function(b){return b.id===id;})[0]||{bookingId:''}; }
+    render();
+  })();
+</script>
+</body>
+</html>

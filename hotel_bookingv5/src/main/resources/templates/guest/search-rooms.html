@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Search Rooms | User Dashboard</title>
+  <style>
+    .filterbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:1rem 1.1rem;margin-bottom:1.4rem;display:flex;flex-direction:column;gap:.8rem}
+    .filterbar .frow{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:nowrap}
+    .filterbar .frow.wrap-row{flex-wrap:wrap}
+    .filterbar .field{flex:1;min-width:0}
+    .filterbar .fmin{min-width:0}
+    .filterbar .fmax-w{min-width:0}
+    .mini-range{display:flex;gap:.4rem;align-items:center}
+    .range-vals{margin-top:.2rem}
+    .rc-amen{display:flex;gap:.35rem;flex-wrap:wrap;margin:.5rem 0}
+    .rc-amen span{font-size:.68rem;font-weight:600;color:var(--muted);background:var(--surface-3);border-radius:99px;padding:.18rem .55rem}
+    .filterbar input[type=date]{min-height:44px;-webkit-appearance:none;appearance:none}
+    .filterbar input[type="date"]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.65}
+    @media (max-width:900px){.filterbar .frow{flex-wrap:wrap}.filterbar .field{min-width:140px}.filterbar input[type=date]{width:100%}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ur">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Find your stay</div><h2 style="font-family:var(--display)">Search available rooms</h2><p>Tell us when and who's coming &mdash; we'll match you to the perfect room.</p></div>
+
+      <form class="filterbar" id="fbar">
+        <div class="frow">
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Search</label>
+            <div class="input-affix" style="width:100%"><span data-icon="search"></span><input class="input" id="q" placeholder="Room name, type or keyword..."></div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Check-in</label><div class="input-affix" style="width:100%"><span data-icon="calendar"></span><input class="input" type="date" id="ci"></div></div>
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Check-out</label><div class="input-affix" style="width:100%"><span data-icon="calendar"></span><input class="input" type="date" id="co"></div></div>
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Guests</label><select class="input" id="guests"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Room type</label><select class="input" id="rtype"><option value="">Any room</option><option>Single</option><option>Double</option><option>Twin</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Premium</option></select></div>
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Min price</label>
+            <div class="input-affix" style="width:100%"><span style="padding-left:.6rem">$</span><input class="input" type="number" id="pmin" min="0" step="10" value="0" placeholder="0"></div>
+          </div>
+          <div class="field" style="margin:0"><label class="text-xs" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Max price</label>
+            <div class="input-affix" style="width:100%"><span style="padding-left:.6rem">$</span><input class="input" type="number" id="pmax" min="0" step="10" value="500" placeholder="500"></div>
+          </div>
+          <button class="btn btn-ghost" type="button" id="resetBar" style="height:44px;flex:none">Reset</button>
+        </div>
+      </form>
+
+      <div class="row between wrap mb-2">
+        <span class="result-count" id="rc"></span>
+        <div class="row"><span class="text-sm text-muted">Sort</span><select class="input" id="sort" style="width:auto;min-width:180px"><option value="recommended">Recommended</option><option value="priceAsc">Price: Low to High</option><option value="priceDesc">Price: High to Low</option><option value="rating">Highest Rated</option><option value="popular">Most Popular</option><option value="all">All rooms</option></select></div>
+      </div>
+      <div class="rooms-grid" id="grid"></div>
+      <div id="pagerWrap" style="margin-top:1.1rem"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('ur','Rooms',[{label:'Dashboard',href:'/user/dashboard'},{label:'Rooms',href:'#'}]);
+  (function(){
+    var st={min:0,max:500,rtype:'',guests:2,sort:'recommended',ci:'',co:'',q:'',page:1,per:8};
+    var today=App.fmtDateISO(new Date());
+    var cinT=new Date(); cinT.setDate(cinT.getDate()+1);
+    var coutT=new Date(); coutT.setDate(coutT.getDate()+4);
+    var ciEl=document.getElementById('ci'), coEl=document.getElementById('co');
+    ciEl.min=today; coEl.min=today;
+    st.ci=''; st.co='';
+    var prior=App.getSearch();
+    if(prior&&prior.checkin){
+      ciEl.value=prior.checkin;
+      coEl.value=(prior.checkout&&prior.checkout>prior.checkin)?prior.checkout:'';
+      st.ci=ciEl.value; st.co=coEl.value;
+      coEl.min=prior.checkin;
+      if(prior.roomType)document.getElementById('rtype').value=prior.roomType;
+      if(prior.adults)document.getElementById('guests').value=prior.adults;
+    }
+    ciEl.addEventListener('change',function(){
+      ciEl.min=today;
+      if(ciEl.value&&coEl.value&&ciEl.value>=coEl.value){
+        var n=new Date(ciEl.value); n.setDate(n.getDate()+1);
+        coEl.value=App.fmtDateISO(n);
+      }
+      coEl.min=ciEl.value||today;
+      st.ci=ciEl.value; st.co=coEl.value;
+    });
+    coEl.addEventListener('change',function(){
+      if(coEl.value&&ciEl.value&&coEl.value<=ciEl.value){
+        ciEl.value=App.fmtDateISO(new Date(new Date(coEl.value).getTime()-86400000));
+        coEl.min=ciEl.value;
+      }
+      st.ci=ciEl.value; st.co=coEl.value;
+    });
+    document.getElementById('pmin').value=st.min;
+    document.getElementById('pmax').value=st.max;
+    document.getElementById('pmin').addEventListener('input',App.debounce(function(){
+      st.min=Math.max(0,+this.value||0); st.page=1; render();
+    },200));
+    document.getElementById('pmax').addEventListener('input',App.debounce(function(){
+      st.max=+this.value||0; if(st.max<=0)st.max=999999; st.page=1; render();
+    },200));
+    document.getElementById('rtype').addEventListener('change',function(){ st.rtype=this.value; st.page=1; render(); });
+    document.getElementById('guests').addEventListener('change',function(){ st.guests=+this.value; st.page=1; render(); });
+    document.getElementById('fbar').addEventListener('submit',function(e){ e.preventDefault(); });
+    document.getElementById('resetBar').addEventListener('click',function(){
+      App.saveSearch(null);
+      window.location.href=window.location.pathname;
+    });
+    document.getElementById('sort').addEventListener('change',function(){ st.sort=this.value; st.page=1; render(); });
+    document.getElementById('q').addEventListener('input',App.debounce(function(){ st.q=this.value.toLowerCase().trim(); st.page=1; render(); },250));
+    var grid=document.getElementById('grid');
+    function filter(){
+      var all=App.getRooms();
+      var res=all.filter(function(r){
+        var eff=r.price-(r.price*(r.discount||0)/100);
+        if(st.q){ var hay=(r.name+' '+r.type+' '+r.view+' '+(r.amenities?r.amenities.join(' '):'')).toLowerCase(); if(hay.indexOf(st.q)===-1)return false; }
+        if(eff<st.min||eff>st.max)return false;
+        if(st.rtype&&r.type!==st.rtype)return false;
+        return r.capacity>=st.guests;
+      });
+      res.sort(function(a,b){ var av=function(x){return x.price-(x.price*(x.discount||0)/100);};
+        if(st.sort==='priceAsc')return av(a)-av(b); if(st.sort==='priceDesc')return av(b)-av(a); if(st.sort==='rating')return b.rating-a.rating; if(st.sort==='popular')return b.popularity-a.popularity;
+        return (b.featured?1:0)-(a.featured?1:0)||b.popularity-a.popularity; });
+      return res;
+    }
+    function render(){
+      var res=filter();
+      var showAll=st.sort==='all';
+      var pages=showAll?1:Math.max(1,Math.ceil(res.length/st.per));
+      var slice=showAll?res:res.slice((st.page-1)*st.per,st.page*st.per);
+      document.getElementById('rc').innerHTML='<b>'+res.length+'</b> room'+(res.length===1?'':'s')+' matching your search';
+      if(!res.length){ grid.innerHTML=App.emptyState('search','No rooms match','Try widening the price range or choosing another room type.','<button class="btn btn-soft btn-sm" onclick="document.getElementById(\'resetBar\').click()">Reset filters</button>'); }
+      else grid.innerHTML=slice.map(function(r){
+        var pct=r.discount||0, final=r.price-(r.price*pct/100), fav=App.isFav(r.id);
+        return '<article class="room-card" data-id="'+r.id+'"><div class="rc-img"><img src="'+r.images[0]+'" alt="" loading="lazy">'+(pct?'<span class="discount-pill">'+pct+'% OFF</span>':'')+
+                '<button class="rc-fav'+(fav?' active':'')+'" data-fav>'+App.icon('heart','icon')+'</button></div><div class="rc-body"><div class="rc-type">'+r.type+'</div>'+
+                '<div class="rc-rate"><span class="stars">'+App.stars(r.rating)+'</span><b>'+r.rating+'</b><span>('+r.reviews+')</span></div>'+
+                '<h3 class="rc-title">'+r.name+'</h3><div class="rc-meta"><span data-icon="users" class="icon" style="width:14px;height:14px"></span> '+r.capacity+' Guests &bull; '+r.beds+'</div><div class="rc-meta"><span data-icon="grid2" class="icon" style="width:14px;height:14px"></span> '+r.size+' m&sup2; &bull; '+r.view+'</div>'+
+                '<div class="rc-amen">'+(r.amenities&&r.amenities.slice?r.amenities.slice(0,3):[]).map(function(a){return '<span>'+App.esc(a)+'</span>';}).join('')+'</div>'+
+                '<div class="rc-avail" style="color:var(--'+(r.status==='available'?'success':'danger')+')"><span class="avail-dot '+(r.status==='available'?'available':'occupied')+'"></span> '+(r.status==='available'?'Available':'Unavailable')+'</div>'+
+                '<div class="rc-price"><span class="now">'+App.money(final)+'</span><span class="per">/ night</span>'+(pct?'<span class="strike">'+App.money(r.price)+'</span>':'')+'</div>'+
+                '<div class="rc-foot"><a class="btn btn-outline btn-sm" href="/user/room-details?id='+r.id+'" >View Details</a><a class="btn btn-primary btn-sm" href="/booking?room='+r.id+'&checkin='+st.ci+'&checkout='+st.co+'&adults='+st.guests+'">Book Now</a></div></div></article>';
+      }).join('');
+      grid.querySelectorAll('[data-fav]').forEach(function(b){ b.addEventListener('click',function(){ var added=App.toggleFav(b.closest('.room-card').dataset.id); b.classList.toggle('active',added); App.toast(added?'Saved to favorites':'Removed','success'); }); });
+      document.getElementById('pagerWrap').innerHTML=showAll?'':App.pagination(st.page,pages,function(){});
+      App.initPager(document.getElementById('pagerWrap'),function(p){ st.page=p; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+    }
+    render();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!--
+  Shared <head> boilerplate, used by every page in the project.
+  Never rendered directly - other pages pull it in with th:replace.
+  The <title> tag is intentionally NOT here since it differs per page;
+  each page keeps its own <title> right after this include.
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><title>fragments</title></head>
+<body>
+
+<th:block th:fragment="head-common">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Professional hotel booking management system">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/base.css}">
+    <!--
+      Bridges the real, DB-backed SiteContent (edited via Admin > Content
+      Management) into core.js's client-side "contents" store. siteBrand is
+      injected on every page automatically by SiteBrandAdvice
+      (@ControllerAdvice), so this script tag doesn't need each controller
+      to pass it explicitly. getContents() in core.js reads
+      window.__SERVER_CONTENT__ when present instead of its localStorage
+      demo data - see the getContents() patch.
+    -->
+    <script th:if="${siteBrand != null}" th:inline="javascript">
+        window.__SERVER_CONTENT__ = {
+            hotelName: /*[[${siteBrand.hotelName}]]*/ ''
+        };
+    </script>
+</th:block>
+
+</body>
+</html>

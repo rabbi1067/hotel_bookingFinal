@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports | Admin</title>
+  <meta name="description" content="Professional hotel booking management system">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/base.css}">
+  <style>
+    .rep-month{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.2rem}
+    .bars{display:flex;align-items:flex-end;gap:.6rem;height:150px;margin-top:.8rem}
+    .bars .ba{flex:1;display:flex;flex-direction:column;align-items:center;gap:.3rem;height:100%}
+    .bars .bar{width:100%;max-width:44px;border-radius:6px 6px 0 0;background:var(--grad);position:relative;transition:.2s}
+    .bars .bar:hover{opacity:.85}
+    .export{color:var(--muted);cursor:pointer;font-size:.8rem;display:inline-flex;align-items:center;gap:.4rem}
+    .export:hover{color:var(--primary)}
+    .split-row{display:grid;grid-template-columns:1.4fr 1fr;gap:1rem;align-items:start}
+    @media(max-width:880px){.split-row{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="rp">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Insights</div><h2 style="font-family:var(--display)">Business reports</h2></div>
+        <div class="row" style="gap:.6rem">
+          <select class="input" id="repRange" style="width:auto"><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select>
+          <button class="btn btn-outline" id="repExport">Download CSV</button>
+        </div>
+      </div>
+
+      <div class="rep-month" id="repKpis"></div>
+
+      <div class="card mb-3">
+        <div class="card-head"><h3>Revenue by month</h3><a class="export" id="expRev"><span data-icon="download" style="width:14px;height:14px"></span> Export</a></div>
+        <div class="card-body"><div class="bars" id="revBars"></div></div>
+      </div>
+
+      <div class="split-row">
+        <div class="card mb-3">
+          <div class="card-head"><h3>Occupancy rate</h3><a class="export" id="expOcc"><span data-icon="download" style="width:14px;height:14px"></span> Export</a></div>
+          <div class="card-body"><div class="bars" id="occBars"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Weekend vs weekday</h3></div>
+          <div class="card-body">
+            <div id="wwDonut"></div>
+            <div class="row mt-3" style="justify-content:space-around;text-align:center">
+              <div><div class="wc-num" id="wkEndPct" style="font-size:1.3rem;font-weight:800;color:var(--accent)">72%</div><div class="text-xs" style="color:var(--muted)">Weekend</div></div>
+              <div><div class="wc-num" id="wkDayPct" style="font-size:1.3rem;font-weight:800">51%</div><div class="text-xs" style="color:var(--muted)">Weekday</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="javascript">
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+</script>
+<script th:inline="none">
+
+  App.boot({guard:'admin'});
+  App.renderDashChrome('ar2','Reports',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Reports',href:'#'}]);
+  (function(){
+    var allBookings=App.getBookings();
+    var rooms=App.getRooms();
+    var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function rev(b){ return (b.status==='cancelled')?0:(b.totalAmount||0); }
+
+    // Kept up to date on every renderReports() call so the export buttons
+    // always download whatever range is currently on screen, not stale data
+    // from the first render.
+    var currentBookings=[];
+    var currentRevArr=[];
+    var currentOccArr=[];
+
+    function bookingsInRange(days){
+      var cutoff=new Date();
+      cutoff.setDate(cutoff.getDate()-days);
+      return allBookings.filter(function(b){
+        return App.parseISO(b.createdAt)>=cutoff;
+      });
+    }
+
+    function revenueByMonth(bookings){
+      var arr=months.map(function(){return 0;});
+      bookings.forEach(function(b){ if(b.status==='cancelled')return; var d=App.parseISO(b.createdAt); arr[d.getMonth()]+=rev(b); });
+      return arr;
+    }
+
+    // Approximation: bookings created in that month against total room count.
+    // A true occupancy rate would need room-nights vs check-in/check-out
+    // ranges - flagged separately, this mirrors the app's existing metric.
+    function occupancyByMonth(bookings){
+      var counts=months.map(function(){return 0;});
+      bookings.forEach(function(b){ if(b.status==='cancelled')return; var d=App.parseISO(b.createdAt); counts[d.getMonth()]++; });
+      var capacity=Math.max(1,rooms.length);
+      return counts.map(function(c){ return Math.min(100,Math.round(c/capacity*100)); });
+    }
+
+    function renderReports(days){
+      var bookings=bookingsInRange(days);
+      currentBookings=bookings;
+
+      var total=bookings.reduce(function(a,b){return a+rev(b);},0);
+      var paid=bookings.filter(function(b){return b.payment==='paid'&&b.status!=='cancelled';}).reduce(function(a,b){return a+rev(b);},0);
+      var activeCount=bookings.filter(function(b){return b.status!=='cancelled';}).length;
+
+      document.getElementById('repKpis').innerHTML=[
+        ['Total revenue',App.money(total),'accent'],
+        ['Collected',App.money(paid),'collected'],
+        ['Bookings',activeCount+'','bookings'],
+        ['Completed stays',bookings.filter(function(b){return b.status==='completed';}).length+'','completed'],
+        ['Avg. value',App.money(total/Math.max(1,activeCount)),'avg']
+      ].map(function(x){ return '<div class="ps-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem;box-shadow:var(--shadow-sm)"><div class="ps-lab" style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:'+(x[2]==='accent'?'var(--accent)':'var(--muted)')+'">'+x[0]+'</div><div class="ps-num" style="font-size:1.4rem;font-weight:800;font-family:var(--display)">'+x[1]+'</div></div>'; }).join('');
+
+      var revArr=revenueByMonth(bookings);
+      currentRevArr=revArr;
+      var rmax=Math.max.apply(null,revArr)||1;
+      document.getElementById('revBars').innerHTML=revArr.map(function(v,i){
+        if(!v)return '<div class="ba" data-m="'+months[i]+'"><div class="text-xs" style="color:var(--muted)">0</div><div class="bar" style="height:0"></div><span class="text-xs" style="font-weight:700">'+months[i]+'</span></div>';
+        return '<div class="ba" data-m="'+months[i]+'"><div class="text-xs" style="color:var(--muted)">'+App.money(v).replace('.00','')+'</div><div class="bar" style="height:'+Math.round(v/rmax*100)+'%"></div><span class="text-xs" style="font-weight:700">'+months[i]+'</span></div>';
+      }).join('');
+
+      var occArr=occupancyByMonth(bookings);
+      currentOccArr=occArr;
+      document.getElementById('occBars').innerHTML=occArr.map(function(v,i){
+        return '<div class="ba"><div class="text-xs" style="color:var(--muted)">'+v+'%</div><div class="bar" style="height:'+v+'%;background:var(--accent)"></div><span class="text-xs" style="font-weight:700">'+months[i]+'</span></div>';
+      }).join('');
+
+      var weekendCount=0, weekdayCount=0;
+      bookings.forEach(function(b){
+        if(b.status==='cancelled')return;
+        var d=App.parseISO(b.checkIn||b.createdAt);
+        var day=d.getDay();
+        if(day===0||day===6) weekendCount++; else weekdayCount++;
+      });
+      var wTotal=weekendCount+weekdayCount;
+      var weekendPct=wTotal?Math.round(weekendCount/wTotal*100):0;
+      var weekdayPct=wTotal?100-weekendPct:0;
+      document.getElementById('wwDonut').innerHTML='<svg viewBox="0 0 100 100" style="width:150px;height:150px;margin:0 auto;display:block"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg)" stroke-width="16"/><circle cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="16" stroke-dasharray="'+weekendPct+' '+(100-weekendPct)+'" stroke-dashoffset="7" transform="rotate(-90 50 50)" stroke-linecap="round"/><text x="50" y="52" text-anchor="middle" dominant-baseline="middle" style="font-family:var(--display);font-weight:800;font-size:17px;fill:var(--text)">'+weekendPct+'%</text></svg>';
+      document.getElementById('wkEndPct').textContent=weekendPct+'%';
+      document.getElementById('wkDayPct').textContent=weekdayPct+'%';
+    }
+
+    document.getElementById('repExport').addEventListener('click',function(){
+      var rows=[['code','guest','checkin','checkout','amount','status','payment']];
+      currentBookings.forEach(function(b){ rows.push([b.bookingId,App.userById(b.userId)?App.userById(b.userId).name:'Guest',App.dateStr(b.checkIn),App.dateStr(b.checkOut),rev(b),b.status,b.payment]); });
+      download('bookings-report.csv',rows.map(function(r){return r.join(',');}).join('\n'));
+      App.toast('Report downloaded.');
+    });
+    document.getElementById('expRev').addEventListener('click',function(){
+      var rows=[['month','revenue']]; currentRevArr.forEach(function(v,i){ rows.push([months[i],v]); });
+      download('revenue.csv',rows.map(function(r){return r.join(',');}).join('\n'));
+      App.toast('Revenue exported.');
+    });
+    document.getElementById('expOcc').addEventListener('click',function(){
+      var rows=[['month','occupancy']]; currentOccArr.forEach(function(v,i){ rows.push([months[i],v]); });
+      download('occupancy.csv',rows.map(function(r){return r.join(',');}).join('\n'));
+      App.toast('Occupancy exported.');
+    });
+    function download(name,content){ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:'text/csv'})); a.download=name; a.click(); }
+
+    renderReports(30);
+    document.getElementById('repRange').addEventListener('change',function(){ renderReports(parseInt(this.value)); });
+  })();
+</script>
+</body>
+</html>

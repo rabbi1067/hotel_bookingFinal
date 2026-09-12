@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Gallery Management | Admin</title>
+  <style>
+    .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;min-height:60vh}
+    .gal-item{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+    .gal-item img{width:100%;height:100%;object-fit:cover;display:block;transition:.2s}
+    .gal-item:hover img{transform:scale(1.04)}
+    .gal-meta{position:absolute;inset:auto 0 0 0;padding:.5rem .7rem;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff;font-size:.78rem;display:flex;justify-content:space-between;align-items:center}
+    .gal-btn{position:absolute;top:.5rem;right:.5rem;opacity:0;transition:.15s}
+    .gal-item:hover .gal-btn{opacity:1}
+
+    .empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5rem 2rem;min-height:55vh;width:100%}
+    .empty .eico{width:88px;height:88px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem}
+    .empty .eico .icon{width:40px;height:40px;opacity:.6}
+    .empty h3{font-family:var(--display);font-size:1.6rem;margin:0 0 .6rem}
+    .empty p{font-size:1rem;color:var(--muted);max-width:320px;margin:0}
+
+    /* Add-photo modal - screen-er majkhane center */
+    .gal-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:999}
+    .gal-modal-box{width:100%;max-width:440px;padding:1.4rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2,var(--surface));box-shadow:var(--shadow-lg)}
+    .gal-modal-box h3{margin:0 0 1rem;font-family:var(--display)}
+    .gal-modal-box .field{margin-bottom:.8rem}
+    .gal-modal-box label{display:block;font-size:.8rem;margin-bottom:.3rem;font-weight:600}
+    .gal-modal-box .input{width:100%;padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;box-sizing:border-box}
+    .gal-preview{margin-top:.6rem;width:100%;max-height:220px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border)}
+    .gal-modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}
+    .gal-err{color:#d33;font-size:.8rem;margin-bottom:.8rem}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ag">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Media</div><h2 style="font-family:var(--display)">Hotel gallery</h2></div>
+        <div class="row" style="gap:.6rem">
+          <button class="btn btn-primary" id="galToggle" type="button"><span data-icon="plus" class="icon" style="width:16px;height:16px"></span> Add photo</button>
+        </div>
+      </div>
+
+      <div th:if="${error}" class="gal-err" th:text="${error}"></div>
+
+      <div class="gal-grid" id="galGrid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Add photo modal: screen-er center e popup hoy -->
+<div class="gal-modal-backdrop hide" id="galModalBackdrop">
+  <form class="gal-modal-box" id="galUploadBox"
+        th:action="@{/admin/gallery-management/add}"
+        method="post" enctype="multipart/form-data">
+    <h3>Add gallery photo</h3>
+
+    <div class="field">
+      <label>Caption</label>
+      <input class="input" type="text" name="label" required placeholder="e.g. Infinity pool at sunset">
+    </div>
+
+    <div class="field">
+      <label>Category</label>
+      <select class="input" name="category">
+        <option value="hotel">hotel</option>
+        <option value="facility" selected>facility</option>
+        <option value="room">room</option>
+        <option value="dining">dining</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Photo (device theke choose koro)</label>
+      <input class="input" type="file" name="photo" id="galFileInput" accept="image/*" required>
+      <img class="gal-preview" id="galPreview" alt="preview">
+    </div>
+
+    <div class="gal-modal-actions">
+      <button class="btn" type="button" id="galCancel">Cancel</button>
+      <button class="btn btn-primary" type="submit">Upload photo</button>
+    </div>
+  </form>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_GALLERY__ = /*[[${galleryForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+  App.boot({guard:'admin'});
+  App.renderDashChrome('ag','Gallery Management',[{label:'Dashboard',href:'/admin/dashboard'}]);
+  (function(){
+    var grid=document.getElementById('galGrid');
+    var backdrop=document.getElementById('galModalBackdrop');
+    var toggleBtn=document.getElementById('galToggle');
+    var cancelBtn=document.getElementById('galCancel');
+    var fileInput=document.getElementById('galFileInput');
+    var preview=document.getElementById('galPreview');
+
+    function openModal(){ backdrop.classList.remove('hide'); }
+    function closeModal(){ backdrop.classList.add('hide'); }
+
+    toggleBtn.addEventListener('click',openModal);
+    cancelBtn.addEventListener('click',closeModal);
+    backdrop.addEventListener('click',function(e){ if(e.target===backdrop) closeModal(); });
+
+    // Jodi server-side error thake (validation fail), modal ta auto open hobe
+    if(document.querySelector('.gal-err')){ openModal(); }
+
+    // File choose korle preview dekhabe, submit korar age
+    fileInput.addEventListener('change',function(){
+      if(!this.files.length){ preview.style.display='none'; return; }
+      var file=this.files[0];
+      if(file.size>2*1024*1024){ App.toast('Please choose an image under 2MB.','warning'); this.value=''; preview.style.display='none'; return; }
+      var reader=new FileReader();
+      reader.onload=function(e){ preview.src=e.target.result; preview.style.display='block'; };
+      reader.readAsDataURL(file);
+    });
+
+    function all(){ return App.getGallery(); }
+    function render(){
+      var list=all();
+      if(!list.length){ grid.innerHTML=App.emptyState('image','No photos yet','Add photos of your hotel to show off to guests.'); return; }
+      grid.innerHTML=list.map(function(g){
+        return '<div class="gal-item" data-id="'+g.id+'">'+
+                '<img src="'+g.img+'" alt="'+App.esc(g.title)+'" loading="lazy">'+
+                '<button class="gal-btn btn btn-dark btn-sm" data-del="'+g.id+'">'+App.icon('trash','icon')+'</button>'+
+                '<div class="gal-meta"><span>'+App.esc(g.title)+'</span><span>'+g.cat+'</span></div>'+
+                '</div>';
+      }).join('');
+      grid.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click',function(){
+        var g=all().find(function(x){return x.id===b.dataset.del;});
+        App.openConfirm('Delete photo?','"'+g.title+'" will be removed from the gallery.').then(function(ok){
+          if(!ok)return;
+          var form=document.createElement('form');
+          form.method='POST'; form.action='/admin/gallery-management/'+g.id+'/delete'; form.style.display='none';
+          document.body.appendChild(form);
+          form.submit();
+        });
+      }); });
+    }
+    render();
+  })();
+</script>
+</body>
+</html>

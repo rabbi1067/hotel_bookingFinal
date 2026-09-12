@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>favorites</title>
+  <style>
+    .rooms-grid.is-empty {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+    }
+    .rooms-grid.is-empty .empty-state {
+      margin: 0 auto;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="uf">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title">
+        <div class="row between wrap"><div><div class="eyebrow">Saved for later</div><h2 style="font-family:var(--display)">Favorite Rooms</h2><p id="favNote"></p></div>
+          <a class="btn btn-primary" th:href="@{/user/search-rooms}"><span data-icon="plus" class="icon" style="width:16px;height:16px"></span> Discover more rooms</a></div>
+      </div>
+      <div class="rooms-grid" id="favGrid"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('uf','Favorites',[{label:'Dashboard',href:'/user/dashboard'},{label:'Favorites',href:'#'}]);
+  (function(){
+    var grid=document.getElementById('favGrid');
+    function render(){
+      var favIds=App.favs();
+      var rooms=favIds.map(App.roomById).filter(Boolean);
+
+      // Clean up stale favorite IDs (room was deleted by admin).
+      var validIds=rooms.map(function(r){ return String(r.id); });
+      favIds.forEach(function(id){
+        if(validIds.indexOf(String(id))===-1){ App.toggleFav(id); }
+      });
+
+      document.getElementById('favNote').textContent=rooms.length?'You have '+rooms.length+' saved room'+(rooms.length>1?'s':'')+'. Favorites are saved on this device.' : '';
+      if(!rooms.length){
+        grid.classList.add('is-empty');
+        grid.innerHTML=App.emptyState('heart','No favorites yet','Tap the heart icon on any room to keep it here for quick booking.','<a class="btn btn-primary btn-sm" th:href="@{/user/search-rooms}">Browse rooms</a>');
+        return;
+      }
+      grid.classList.remove('is-empty');
+      grid.innerHTML=rooms.map(function(r){
+        var pct=r.discount||0, final=r.price-(r.price*pct/100);
+        return '<article class="room-card" data-id="'+r.id+'"><div class="rc-img"><img src="'+r.images[0]+'" alt="" loading="lazy">'+(pct?'<span class="discount-pill">'+pct+'% OFF</span>':'')+
+                '<button class="rc-fav active" data-fav aria-label="Remove">'+App.icon('heart','icon')+'</button></div>'+
+                '<div class="rc-body"><div class="rc-type">'+r.type+'</div>'+
+                '<div class="rc-rate"><span class="stars">'+App.stars(r.rating)+'</span><b>'+r.rating+'</b><span>('+r.reviews+')</span></div>'+
+                '<h3 class="rc-title">'+r.name+'</h3>'+
+                '<div class="rc-meta"><span data-icon="users" class="icon" style="width:14px;height:14px"></span> '+r.capacity+' Guests &bull; '+r.beds+'</div>'+
+                '<div class="rc-price"><span class="now">'+App.money(final)+'</span><span class="per">/ night</span>'+(pct?'<span class="strike">'+App.money(r.price)+'</span>':'')+'</div>'+
+                '<div class="rc-foot"><a class="btn btn-outline btn-sm" href="/user/room-details?id='+r.id+'">Details</a><a class="btn btn-primary btn-sm" href="/booking?room='+r.id+'">Book Now</a></div></div></article>';
+      }).join('');
+      grid.querySelectorAll('[data-fav]').forEach(function(b){
+        b.addEventListener('click',function(){
+          App.toggleFav(b.closest('.room-card').dataset.id);
+          App.toast('Removed from favorites','info');
+          render();
+        });
+      });
+    }
+    render();
+  })();
+</script>
+</body>
+</html>

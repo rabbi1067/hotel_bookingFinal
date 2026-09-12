@@ -1,0 +1,341 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Room Details | Grand Meridian Resort</title>
+  <style>
+    .rd-layout{display:grid;grid-template-columns:1fr 360px;gap:1.6rem;align-items:start}
+    .pin-card{position:sticky;top:calc(var(--topbar-h) + 18px)}
+    .fact-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}
+    .amen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.55rem}
+    .amen-tile{display:flex;align-items:center;gap:.55rem;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:.6rem .75rem;font-size:.85rem;font-weight:550}
+    .amen-tile .icon{color:var(--primary)}
+    .similar{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem}
+    .back-btn{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:1rem}
+    @media (max-width:1100px){.rd-layout{grid-template-columns:1fr}.pin-card{position:static}}
+    body[data-chrome="dash"]>.app>main>.container{width:100% !important;max-width:none !important;margin:0 !important;box-sizing:border-box;padding-left:clamp(1rem,3vw,3rem) !important;padding-right:clamp(1rem,3vw,3rem) !important}
+    @media (min-width:1101px){body[data-chrome="dash"] .rd-layout{grid-template-columns:minmax(0,1fr) minmax(320px,360px)}}
+    body[data-chrome="dash"] .rd-layout>div{min-width:0}
+    body[data-chrome="dash"] .pin-card{min-width:0}
+    .app>.sidebar,.app>.topbar{display:none}
+    .app>main{margin-left:0;padding-top:0}
+    body[data-chrome="dash"]>.site-bar{display:none}
+    body[data-chrome="dash"]>.app>.sidebar{display:block}
+    body[data-chrome="dash"]>.app>.topbar{display:flex}
+    /* FIX: removed the duplicate `margin-left:var(--sidebar-w)` here.
+       The CSS Grid on .app (grid-template-columns: var(--sidebar-w) 1fr)
+       already positions <main> in the second column - adding margin-left
+       again pushed content an extra --sidebar-w to the right, leaving a
+       big empty gap next to the sidebar. */
+    body[data-chrome="dash"]>.app>main{padding-top:var(--topbar-h);min-height:100vh}
+    body[data-chrome="dash"] #footslot{display:none}
+    body[data-modal="true"]>.site-bar,body[data-modal="true"]>.app>.sidebar,body[data-modal="true"]>.app>.topbar{display:none!important}
+    body[data-modal="true"]>.app>main{margin-left:0!important;padding-top:0!important}
+    body[data-modal="true"] .container{padding-top:1rem!important}
+    /* removed: the old `@media (max-width:800px){...margin-left:0}` override -
+       no longer needed since we don't set margin-left on desktop either */
+    /* Full-width dashboard content: override the shared .container max-width */
+    body[data-chrome="dash"] .app main .container{width:100% !important;max-width:none !important;margin-left:0 !important;margin-right:0 !important;padding-left:clamp(1rem,3vw,3rem) !important;padding-right:clamp(1rem,3vw,3rem) !important;box-sizing:border-box !important}
+    body[data-chrome="dash"] .app main{min-width:0 !important;overflow-x:hidden}
+    body[data-chrome="dash"] .app main .rd-layout{width:100% !important;min-width:0 !important}
+  </style>
+</head>
+
+<body data-chrome="public" data-active="rooms">
+<nav class="site-bar" data-site-nav></nav>
+<div class="app" id="pageApp">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+
+    <div class="container" style="padding-top:2rem">
+      <div class="breadcrumb"><a id="detailsBackLink" href="/">Home</a><span class="sep">/</span><a id="detailsRoomsLink" href="/rooms">Rooms</a><span class="sep">/</span><span class="cur" id="crumbName">Room details</span></div>
+
+      <button class="btn btn-outline btn-sm back-btn" id="backBtn" type="button">
+        <span data-icon="arrowLeft" class="icon icon-sm"></span> Back to Rooms
+      </button>
+
+      <div id="loader">
+        <div class="sk" style="height:120px;border-radius:var(--radius)"></div>
+        <div style="margin-top:1rem;display:grid;gap:.8rem"><div class="sk" style="height:20px;width:40%"></div><div class="sk" style="height:14px;width:75%"></div><div class="sk" style="height:14px;width:60%"></div></div>
+      </div>
+
+      <div id="details" class="hide">
+        <div class="rd-layout">
+          <div>
+            <div class="dg-main" id="dgMain"><img id="dgImg" src="" alt=""></div>
+            <div class="dg-thumbs" id="dgThumbs"></div>
+
+            <div class="card mt-4 card-pad">
+              <div class="row between mb-2">
+                <div>
+                  <div class="rc-type" id="roomType" style="color:var(--accent);font-weight:700;font-size:.74rem;letter-spacing:.1em;text-transform:uppercase"></div>
+                  <h2 id="roomName" style="font-family:var(--display)"></h2>
+                </div>
+                <button class="btn btn-outline btn-sm" id="favBtn"></button>
+              </div>
+              <div class="rc-rate mb-3" id="rateRow"></div>
+              <p class="text-muted" id="roomDesc"></p>
+
+              <div class="divider" style="margin:1.2rem 0"></div>
+              <h4 class="mb-2" style="font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Room facts</h4>
+              <div class="fact-grid">
+                <div class="join-cell"><div class="k">Max guests</div><div class="v" id="fGuests"></div></div>
+                <div class="join-cell"><div class="k">Bed type</div><div class="v" id="fBed"></div></div>
+                <div class="join-cell"><div class="k">Size</div><div class="v" id="fSize"></div></div>
+                <div class="join-cell"><div class="k">Floor</div><div class="v" id="fFloor"></div></div>
+                <div class="join-cell"><div class="k">View</div><div class="v" id="fView"></div></div>
+                <div class="join-cell"><div class="k">Status</div><div class="v" id="fStatus"></div></div>
+              </div>
+
+              <div class="divider" style="margin:1.2rem 0"></div>
+              <h4 class="mb-2" style="font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Amenities &amp; services</h4>
+              <div class="amen-grid" id="amenGrid"></div>
+            </div>
+          </div>
+
+          <aside class="pin-card">
+            <div class="card card-pad">
+              <div class="row between">
+                <div class="rc-price" style="flex-direction:column;align-items:flex-start;gap:.1rem">
+                  <div class="row" style="gap:.5rem;align-items:baseline"><span class="now" style="font-size:1.7rem" id="pNow"></span><span class="per">/ night</span></div>
+                  <div id="pOld" class="text-sm" style="color:var(--muted-2)"></div>
+                </div>
+                <div id="pBadges"></div>
+              </div>
+              <div class="divider" style="margin:1rem 0"></div>
+              <div class="field">
+                <label>Check-in</label><input class="input" type="date" id="bkCheckin">
+              </div>
+              <div class="field">
+                <label>Check-out</label><input class="input" type="date" id="bkCheckout">
+              </div>
+              <div class="row" style="gap:.6rem">
+                <div class="field grow"><label>Adults</label><select class="input" id="bkAdults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+                <div class="field grow"><label>Children</label><select class="input" id="bkChildren"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div>
+              </div>
+              <label class="check mb-3"><input type="checkbox" id="bkPets"> Traveling with pets</label>
+
+              <div class="promo-box mb-3">
+                <div class="row" style="gap:.4rem;flex-wrap:wrap">
+                  <input class="input grow" id="promoInput" placeholder="Promo code" style="font-family:monospace;letter-spacing:.06em;text-transform:uppercase">
+                  <button class="btn btn-soft btn-sm" id="promoApply">Apply</button>
+                </div>
+                <div id="promoMsg"></div>
+              </div>
+
+              <div id="calcRows"></div>
+              <div class="sum-total"><span class="k">Total</span><span class="v" id="calcTotal"></span></div>
+              <button class="btn btn-primary btn-lg btn-block mt-2" id="bookBtn">Book this room</button>
+              <p class="legal mt-2" style="text-align:center">Free cancellation before 48h &bull; No prepayment</p>
+            </div>
+          </aside>
+        </div>
+
+        <section class="block" id="similar">
+          <div class="section-title"><div class="eyebrow">You may also like</div><h2>Similar Rooms</h2></div>
+          <div class="similar" id="simGrid"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="footslot"></div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  window.__SELECTED_ROOM_ID__ = /*[[${selectedRoomId}]]*/ '';
+  window.__DETAILS_SOURCE__ = /*[[${detailsSource}]]*/ 'home';
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  var isGuestRoute = location.pathname.indexOf('/user/') === 0;
+  var isModalRoute = new URLSearchParams(location.search).get('modal') === '1';
+
+  if (isGuestRoute) {
+    document.body.setAttribute('data-chrome', 'dash');
+  }
+
+  if (isModalRoute) {
+    document.body.setAttribute('data-modal', 'true');
+  }
+
+  App.boot({
+    guard: isGuestRoute ? 'user' : undefined
+  });
+
+  if (isGuestRoute) {
+    App.renderDashChrome('ur', 'Rooms', []);
+  }
+  var detailsSource = window.__DETAILS_SOURCE__ || (isGuestRoute ? 'guest' : 'home');
+  var detailBaseUrl = detailsSource === 'guest' ? '/user/room-details?id=' : '/room-details?id=';
+  var roomsListUrl = detailsSource === 'guest' ? '/user/search-rooms' : '/rooms';
+
+  var backLink = document.getElementById('detailsBackLink');
+  var roomsLink = document.getElementById('detailsRoomsLink');
+  if(detailsSource === 'guest'){
+    backLink.textContent = 'Rooms';
+    backLink.href = '/user/search-rooms';
+    roomsLink.style.display = 'none';
+    roomsLink.nextElementSibling.style.display = 'none';
+  }
+
+  // Back button: works for BOTH flows (home -> rooms -> details, and
+  // guest -> rooms -> details). If the user actually navigated here from
+  // the rooms list within this tab, history.back() takes them back with
+  // their filters/scroll position intact. Otherwise (direct link, new tab,
+  // refresh) we fall back to the correct rooms listing for this context.
+  document.getElementById('backBtn').addEventListener('click', function(){
+    var cameFromRooms = document.referrer && document.referrer.indexOf(roomsListUrl) > -1;
+    if (cameFromRooms && window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = roomsListUrl;
+    }
+  });
+
+  (function(){
+    var queryId=new URLSearchParams(location.search).get('id');
+    var id=window.__SELECTED_ROOM_ID__ || queryId;
+    var rooms=App.getRooms();
+    var room=rooms.find(function(r){ return String(r.id)===String(id); });
+    var loader=document.getElementById('loader');
+
+    function showRoomNotFound(){
+      document.getElementById('details').classList.add('hide');
+      loader.innerHTML=App.emptyState('search','Room not found','This room may have been removed.','<a class="btn btn-soft btn-sm" href="/rooms">Browse rooms</a>');
+      loader.classList.remove('hide');
+    }
+
+    if(!id||!room){ showRoomNotFound(); return; }
+
+    var prices=null;
+    function bind(){
+      var today=App.todayISO();
+      var cin=new Date(); cin.setDate(cin.getDate()+1);
+      var cout=new Date(); cout.setDate(cout.getDate()+4);
+      var p=new URLSearchParams(location.search);
+      var qk=document.getElementById('bkCheckin'), qo=document.getElementById('bkCheckout');
+      qk.value=p.get('checkin')||App.fmtDateISO(cin); qo.value=p.get('checkout')||App.fmtDateISO(cout);
+      qk.min=today; qo.min=today; qo.min=qk.value;
+      qk.addEventListener('change',function(){ if(qo.value&&App.nights(qk.value,qo.value)<=0) qo.value=App.fmtDateISO(App.addDays(App.parseISO(qk.value),1)); qo.min=qk.value; applyCalc(); });
+      qo.addEventListener('change',applyCalc);
+      document.getElementById('bkAdults').addEventListener('change',noop);
+      document.getElementById('promoApply').addEventListener('click',applyPromo);
+      document.getElementById('promoInput').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); applyPromo(); } });
+      applyCalc();
+    }
+    function noop(){}
+    function applyCalc(){
+      var qk=document.getElementById('bkCheckin'), qo=document.getElementById('bkCheckout');
+      var promoInputEl=document.getElementById('promoInput');
+      var code=promoInputEl.value||null;
+      var pc=App.priceBreakdown(room,qk.value,qo.value,1,0,code);
+      prices=pc;
+      document.getElementById('calcRows').innerHTML=
+              '<div class="sum-row"><span class="k">'+pc.nights+' night'+(pc.nights>1?'s':'')+' &times; '+App.money(pc.nightly)+'</span><span class="v">'+App.money(pc.roomTotal)+'</span></div>'+
+              (room.discount?'<div class="sum-row" style="color:var(--success)"><span class="k">Room discount ('+room.discount+'%)</span><span class="v">-'+App.money(Math.round(pc.roomTotal*room.discount/(100-room.discount||1)))+'</span></div>':'')+
+              (pc.promo.ok&&code?'<div class="sum-row" style="color:var(--success)"><span class="k">Promo '+App.esc(code)+'</span><span class="v">-'+App.money(pc.promo.discount)+'</span></div>':'')+
+              '<div class="sum-row"><span class="k">Taxes &amp; fees</span><span class="v">'+App.money(pc.tax)+'</span></div>';
+      document.getElementById('calcTotal').textContent=App.money(pc.total);
+      document.getElementById('promoMsg').innerHTML='';
+      if(code&&!pc.promo.ok) document.getElementById('promoMsg').innerHTML='<div class="promo-err">'+App.icon('alertCircle','icon-sm')+App.esc(pc.promo.msg)+'</div>';
+    }
+    function applyPromo(){
+      var inp=document.getElementById('promoInput');
+      var pc=App.priceBreakdown(room,document.getElementById('bkCheckin').value,document.getElementById('bkCheckout').value,1,0,inp.value||null);
+      if(!inp.value){ showMsg('Enter a promo code to check it.','info'); return; }
+      document.getElementById('promoMsg').innerHTML='<div class="promo-'+((pc.promo.ok)?'ok':'err')+'">'+App.icon(pc.promo.ok?'checkCircle':'alertCircle','icon-sm')+App.esc(pc.promo.ok?('Promo code applied &mdash; you saved '+App.money(pc.promo.discount)):pc.promo.msg)+'</div>';
+      applyCalc();
+    }
+    function showMsg(m,t){ document.getElementById('promoMsg').innerHTML='<div class="promo-'+(t==='info'?'ok':'err')+'">'+App.icon(t==='info'?'info':'alertCircle','icon-sm')+m+'</div>'; }
+
+    var gidx=0;
+    function renderGal(){
+      document.getElementById('dgImg').src=room.images[gidx];
+      document.getElementById('dgImg').alt=room.name;
+      document.getElementById('dgThumbs').innerHTML=room.images.map(function(src,i){
+        return '<button class="'+(i===gidx?'active':'')+'" data-g="'+i+'" aria-label="Image '+(i+1)+'"><img src="'+src+'" alt="" loading="lazy"></button>';
+      }).join('');
+      $$('[data-g]',document.getElementById('dgThumbs')).forEach(function(b){ b.addEventListener('click',function(){ gidx=Number(b.dataset.g); renderGal(); }); });
+      document.getElementById('dgMain').onclick=openLB;
+    }
+    function openLB(){
+      var lb=document.createElement('div');
+      lb.className='lightbox';
+      lb.innerHTML='<button class="lb-close">&times;</button><button class="nav prev">&lsaquo;</button><button class="nav next">&rsaquo;</button><img src="" alt=""><div class="cap">'+App.esc(room.name)+'</div><div class="lb-count"></div>';
+      document.body.appendChild(lb);
+      function show(){ lb.querySelector('img').src=room.images[gidx]; lb.querySelector('.lb-count').textContent=(gidx+1)+' / '+room.images.length; }
+      lb.querySelector('.lb-close').addEventListener('click',function(){lb.remove();});
+      lb.querySelector('.prev').addEventListener('click',function(){ gidx=(room.images.length+gidx-1)%room.images.length; show(); });
+      lb.querySelector('.next').addEventListener('click',function(){ gidx=(gidx+1)%room.images.length; show(); });
+      lb.addEventListener('click',function(e){ if(e.target===lb)lb.remove(); });
+      document.addEventListener('keydown',function ke(e){ if(e.key==='Escape'){lb.remove();document.removeEventListener('keydown',ke);} if(e.key==='ArrowRight')lb.querySelector('.next').click(); if(e.key==='ArrowLeft')lb.querySelector('.prev').click(); });
+      show(); requestAnimationFrame(function(){lb.classList.add('open');});
+    }
+
+    function fill(){
+      document.getElementById('crumbName').textContent=room.name;
+      document.getElementById('roomName').textContent=room.name;
+      document.getElementById('roomType').textContent=room.type+' Room';
+      document.getElementById('roomDesc').textContent=room.desc;
+      document.getElementById('rateRow').innerHTML='<span class="stars">'+App.stars(room.rating)+'</span><b>'+room.rating+' <span class="text-muted" style="font-weight:500">('+room.reviews+' reviews)</span></b>';
+      document.getElementById('fGuests').textContent=room.capacity+' guests';
+      document.getElementById('fBed').textContent=room.beds;
+      document.getElementById('fSize').textContent=room.size+' m&sup2;';
+      document.getElementById('fFloor').textContent='Floor '+room.floor;
+      document.getElementById('fView').textContent=room.view;
+      var statusClass=room.status==='available'?'available':room.status==='occupied'?'occupied':room.status==='maintenance'?'maintenance':'reserved';
+      var statusLabel=App.ROOM_STATUS.indexOf(room.status)>-1?room.status.charAt(0).toUpperCase()+room.status.slice(1):room.status;
+      document.getElementById('fStatus').innerHTML='<span class="avail-dot '+statusClass+'"></span> '+statusLabel;
+      document.getElementById('amenGrid').innerHTML=room.amenities.map(function(a){
+        var ic=amenIcon(a);
+        return '<div class="amen-tile">'+App.icon(ic,'icon')+'<span>'+a+'</span></div>';
+      }).join('');
+      var pct=room.discount||0, final=room.price-(room.price*pct/100);
+      document.getElementById('pNow').textContent=App.money(final);
+      document.getElementById('pOld').innerHTML=pct?'<span class="strike" style="text-decoration:line-through;color:var(--muted-2)">'+App.money(room.price)+'</span> <span class="text-sm" style="color:var(--muted)">/ night</span>':'';
+      document.getElementById('pBadges').innerHTML=(pct?'<span class="badge b-discount">'+pct+'% OFF</span>':'')+(room.badge?('<span class="badge b-limited">'+room.badge+'</span>'):'');
+      var fav=App.isFav(room.id);
+      document.getElementById('favBtn').innerHTML=App.icon('heart','icon')+(fav?' Saved':' Save this room');
+      document.getElementById('favBtn').classList.toggle('btn-primary',fav);
+      document.getElementById('favBtn').classList.toggle('btn-outline',!fav);
+      document.getElementById('favBtn').addEventListener('click',function(){
+        var added=App.toggleFav(room.id);
+        if(added===null)return;
+        this.innerHTML=App.icon('heart','icon')+(added?' Saved':' Save this room');
+        this.classList.toggle('btn-primary',added); this.classList.toggle('btn-outline',!added);
+        App.toast(added?'Saved to favorites':'Removed from favorites',added?'success':'info');
+      });
+      document.getElementById('bookBtn').addEventListener('click',function(){
+        var qk=document.getElementById('bkCheckin'),qo=document.getElementById('bkCheckout');
+        if(App.nights(qk.value,qo.value)<=0){ App.toast('Choose valid dates first.','warning'); return; }
+        var p=new URLSearchParams();
+        p.set('room',room.id); p.set('checkin',qk.value); p.set('checkout',qo.value); p.set('adults',document.getElementById('bkAdults').value); p.set('children',document.getElementById('bkChildren').value);
+        if(document.getElementById('bkPets').checked)p.set('pets','1');
+        var promoValue=document.getElementById('promoInput').value;
+        if(promoValue&&prices&&prices.promo.ok)p.set('promo',promoValue);
+        location.href='/booking?'+p.toString();
+      });
+      renderGal(); bind();
+      var sims=App.getRooms().filter(function(r){return String(r.id)!==String(room.id)&&r.type===room.type;});
+      if(sims.length<3)sims=App.getRooms().filter(function(r){return String(r.id)!==String(room.id);}).slice(0,3);
+      document.getElementById('simGrid').innerHTML=sims.slice(0,3).map(function(r){
+        var pct2=r.discount||0, f2=r.price-(r.price*pct2/100);
+        return '<div class="room-card"><div class="rc-img"><img src="'+r.images[0]+'" alt="" loading="lazy" onerror="this.onerror=null;this.outerHTML=\'<div style=&quot;height:150px;background:#0d3a36&quot;></div>\'">'+(pct2?'<span class="discount-pill">'+pct2+'%</span>':'')+'</div><div class="rc-body"><div class="rc-type">'+r.type+'</div><h3 class="rc-title">'+r.name+'</h3><div class="rc-rate"><span class="stars">'+App.stars(r.rating)+'</span><b>'+r.rating+'</b></div><div class="rc-meta"><span data-icon="users" class="icon" style="width:14px;height:14px"></span> '+r.capacity+' Guests</div><div class="rc-price"><span class="now">'+App.money(f2)+'</span><span class="per">/ night</span></div><div class="rc-foot"><a class="btn btn-outline btn-sm grow" href="'+detailBaseUrl+r.id+'">View</a><a class="btn btn-primary btn-sm" href="/booking?room='+r.id+'">Book</a></div></div></div>';
+      }).join('');
+      App.hydrateIcons(document.getElementById('simGrid'));
+    }
+    function amenIcon(a){ return a==='WiFi'?'wifi':a==='Air Conditioning'?'zap':a==='TV'?'layout':a==='Breakfast'?'coffee':a==='Parking'?'car':a==='Pool'?'info':a==='Gym'?'activity':a==='Spa'?'sparkles':a==='Balcony'?'home':a==='Room Service'?'clock2':'check'; }
+
+    loader.classList.add('hide');
+    document.getElementById('details').classList.remove('hide');
+    fill();
+  })();
+</script>
+</body>
+</html>

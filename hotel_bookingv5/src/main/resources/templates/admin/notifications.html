@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+    <title>Notifications | Grand Meridian Resort</title>
+    <style>
+        .markall{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-weight:600;font-size:.83rem;padding:.45rem .85rem;cursor:pointer}
+        .markall:hover{color:var(--primary);border-color:var(--primary)}
+        .notif-item{display:flex;align-items:center;gap:.9rem}
+        .notif-item .n-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    </style>
+</head>
+
+<body data-chrome="dash" data-active="an">
+<div class="app">
+    <div class="sidebar" id="sidebar"></div>
+    <header class="topbar" id="topbar"></header>
+    <main>
+        <div class="page-wrap">
+            <div class="row between wrap mb-3">
+                <div class="section-title" style="margin:0"><div class="eyebrow">The latest</div><h2 style="font-family:var(--display)">Notifications</h2></div>
+                <button class="markall" id="markAll"><span data-icon="check" class="icon-sm"></span> Mark all as read</button>
+            </div>
+            <div class="card" style="overflow:hidden" id="notifList"></div>
+        </div>
+    </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+    var __sess = App.boot({guard:'staff'});
+    App.renderDashChrome('an','Notifications',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Notifications',href:'#'}]);
+    (function(){
+        var listEl=document.getElementById('notifList');
+        function adminLink(link){
+            if(!link) return '';
+            if(link.indexOf('/user/booking-details')===0) return link.replace('/user/booking-details','/admin/booking-management');
+            if(link==='/user/payment-status') return '/admin/payment-management';
+            if(link==='/user/food-services') return '/admin/food-orders';
+            if(link==='/user/profile') return '/admin/profile';
+            if(link==='/user/my-bookings') return '/admin/booking-management';
+            if(link==='/offers') return '/admin/discount-management';
+            if(link.indexOf('/user/')===0) return '/admin/dashboard';
+            return link;
+        }
+        function render(){
+            var notifs=App.getNotifs();
+            if(!notifs.length){ listEl.innerHTML=App.emptyState('bell','All caught up!','You have no notifications right now.'); return; }
+            listEl.innerHTML=notifs.map(function(n){
+                var t=n.time||Date.now();
+                var ago=timeAgo(t);
+                var icMap={booking:'bookmark',payment:'card',checkin:'clock',offer:'gift',service:'utensils',welcome:'star'};
+                var icoType=n.type&&['booking','payment','checkin','offer','service','welcome'].indexOf(n.type)>-1?n.type:'info';
+                var ic=icMap[icoType]||'info';
+                return '<div class="notif-item'+(n.read?'':' unread')+'" data-id="'+n.id+'">'+
+                    '<div class="n-ico ico-'+(icoType==='booking'?'primary':icoType==='payment'?'success':icoType==='checkin'?'info':icoType==='offer'?'accent':icoType==='service'?'warning':'info')+'">'+App.icon(ic,'icon')+'</div>'+
+                    '<div class="grow"><div class="n-title'+(n.read?'':' unread')+'">'+App.esc(n.title)+'</div><div class="n-msg">'+App.esc(n.msg)+'</div>'+
+                    '<div class="n-time">'+App.icon('clock','icon')+ago+'</div></div>'+
+                    '<button class="btn btn-ghost btn-sm" data-mark="'+n.id+'" aria-label="Mark as read">'+(n.read?App.icon('checkCircle','icon-sm'):App.icon('check','icon-sm'))+'</button>'+
+                    (n.link?'<a class="btn btn-outline btn-sm" href="'+adminLink(n.link)+'">Open</a>':'')+'</div>';
+            }).join('');
+            listEl.querySelectorAll('[data-mark]').forEach(function(b){
+                b.addEventListener('click',function(){ mark(b.dataset.mark); });
+            });
+            listEl.querySelectorAll('.notif-item').forEach(function(el){
+                el.addEventListener('click',function(e){
+                    if(e.target.closest('a,button'))return;
+                    var id=this.dataset.id;
+                    var nl=App.getNotifs().map(function(n){ if(n.id===id)n.read=true; return n; });
+                    App.saveNotifs(nl);
+                    render();
+                    var link=el.querySelector('a'); if(link){ location.href=link.getAttribute('href'); }
+                });
+            });
+        }
+        function mark(id){ var nl=App.getNotifs().map(function(n){ if(n.id===id)n.read=true; return n; }); App.saveNotifs(nl); render(); }
+        document.getElementById('markAll').addEventListener('click',function(){
+            App.saveNotifs(App.getNotifs().map(function(n){ n.read=true; return n; }));
+            App.toast('All notifications marked as read.');
+            render();
+        });
+        function timeAgo(t){
+            var s=Math.floor((Date.now()-t)/1000);
+            if(s<60)return 'Just now';
+            if(s<3600)return Math.floor(s/60)+'m ago';
+            if(s<86400)return Math.floor(s/3600)+'h ago';
+            return Math.floor(s/86400)+'d ago';
+        }
+        render();
+    })();
+</script>
+</body>
+</html>

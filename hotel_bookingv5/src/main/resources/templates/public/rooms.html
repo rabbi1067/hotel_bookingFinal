@@ -1,0 +1,286 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Rooms &amp; Suites | Grand Meridian Resort</title>
+  <style>
+    .room-dl{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+    .room-dl summary{cursor:pointer;padding:.9rem 1.2rem;font-weight:650;display:flex;align-items:center;justify-content:space-between;list-style:none}
+    .room-dl summary:after{content:"";width:8px;height:8px;border:2px solid var(--muted-2);border-top:0;border-left:0;transform:rotate(45deg);transition:.2s;margin-top:-3px}
+    .room-dl[open] summary:after{transform:rotate(225deg);margin-top:3px}
+    .room-dl .f-group{border-bottom:0}
+    .fresh-chip{display:inline-flex;align-items:center;gap:.3rem;background:var(--success-soft);color:var(--success);border-radius:99px;font-size:.7rem;font-weight:700;padding:.2rem .55rem}
+  </style>
+</head>
+
+<body data-chrome="public" data-active="rooms">
+<nav class="site-bar" data-site-nav></nav>
+
+<div class="container" style="padding-top:2rem">
+  <div class="breadcrumb"><a th:href="@{/}">Home</a><span class="sep">/</span><span class="cur">Rooms &amp; Suites</span></div>
+
+  <div class="split wide" id="pageSplit">
+    <aside class="filters" id="filters">
+      <div class="row between mb-2">
+        <h3 style="font-size:1.02rem">Filters</h3>
+        <button class="btn btn-ghost btn-sm" id="resetFilters">Reset</button>
+      </div>
+      <div id="appliedChips" class="row wrap" style="gap:.3rem;margin-bottom:.4rem"></div>
+
+      <div class="f-group">
+        <h4>Search</h4>
+        <div class="input-affix"><span data-icon="search"></span><input class="input" id="fSearch" placeholder="Room name, type, keyword..."></div>
+      </div>
+
+      <div class="f-group">
+        <h4>Price range</h4>
+        <div class="range-slider">
+          <div class="range-track"><div class="fill" id="rangeFill"></div></div>
+          <input type="range" id="fMin" min="50" max="500" step="10" value="50">
+          <input type="range" id="fMax" min="50" max="500" step="10" value="500">
+        </div>
+        <div class="range-vals"><span id="fMinVal">$50</span><span id="fMaxVal">$500</span></div>
+        <div class="row mt-2" style="gap:.4rem">
+          <div class="input-affix grow"><span data-icon="dollar"></span><input class="input" id="fMinIn" inputmode="numeric" value="50" style="height:38px;padding-left:2.2rem;font-size:.85rem"></div>
+          <span class="text-muted text-sm">to</span>
+          <div class="input-affix grow"><span data-icon="dollar"></span><input class="input" id="fMaxIn" inputmode="numeric" value="500" style="height:38px;padding-left:2.2rem;font-size:.85rem"></div>
+        </div>
+      </div>
+
+      <div class="f-group">
+        <h4>Room type</h4>
+        <label class="f-check"><input type="checkbox" value="Single"> Single</label>
+        <label class="f-check"><input type="checkbox" value="Double"> Double</label>
+        <label class="f-check"><input type="checkbox" value="Twin"> Twin</label>
+        <label class="f-check"><input type="checkbox" value="Deluxe"> Deluxe</label>
+        <label class="f-check"><input type="checkbox" value="Suite"> Suite</label>
+        <label class="f-check"><input type="checkbox" value="Family"> Family</label>
+        <label class="f-check"><input type="checkbox" value="Premium"> Premium</label>
+      </div>
+
+      <div class="f-group">
+        <h4>Guest capacity</h4>
+        <label class="f-check"><input type="checkbox" value="1"> 1+ <span class="cnt">guests</span></label>
+        <label class="f-check"><input type="checkbox" value="2"> 2+ <span class="cnt">guests</span></label>
+        <label class="f-check"><input type="checkbox" value="3"> 3+ <span class="cnt">guests</span></label>
+        <label class="f-check"><input type="checkbox" value="4"> 4+ <span class="cnt">guests</span></label>
+        <label class="f-check"><input type="checkbox" value="5"> 5+ <span class="cnt">guests</span></label>
+      </div>
+
+      <div class="f-group">
+        <h4>Amenities</h4>
+        <label class="f-check"><input type="checkbox" value="WiFi"> WiFi</label>
+        <label class="f-check"><input type="checkbox" value="Air Conditioning"> Air Conditioning</label>
+        <label class="f-check"><input type="checkbox" value="TV"> TV</label>
+        <label class="f-check"><input type="checkbox" value="Breakfast"> Breakfast</label>
+        <label class="f-check"><input type="checkbox" value="Parking"> Parking</label>
+        <label class="f-check"><input type="checkbox" value="Pool"> Pool</label>
+        <label class="f-check"><input type="checkbox" value="Gym"> Gym</label>
+        <label class="f-check"><input type="checkbox" value="Spa"> Spa</label>
+        <label class="f-check"><input type="checkbox" value="Balcony"> Balcony</label>
+        <label class="f-check"><input type="checkbox" value="Room Service"> Room Service</label>
+      </div>
+
+      <div class="f-group">
+        <h4>Rating</h4>
+        <label class="f-check"><input type="checkbox" value="4"> 4+ <span class="cnt">stars</span></label>
+        <label class="f-check"><input type="checkbox" value="4.5"> 4.5+ <span class="cnt">stars</span></label>
+        <label class="f-check"><input type="checkbox" value="5"> 5.0 <span class="cnt">stars</span></label>
+      </div>
+
+      <div class="f-group">
+        <h4>Preferences</h4>
+        <label class="toggle" style="margin-bottom:.6rem"><input type="checkbox" id="fPet"><span class="track"></span> Pet friendly</label>
+        <label class="f-check"><input type="checkbox" id="fAvail"> Show available rooms only</label>
+      </div>
+    </aside>
+
+    <section>
+      <div class="result-bar">
+        <div class="result-count" id="resultCount"></div>
+        <div class="row">
+          <span class="text-muted text-sm">Sort by</span>
+          <select class="input" id="sortBy" style="width:auto;min-width:190px;background:var(--surface)">
+            <option value="all">All Rooms</option>
+            <option value="recommended">Recommended</option>
+            <option value="priceAsc">Price: Low to High</option>
+            <option value="priceDesc">Price: High to Low</option>
+            <option value="rating">Highest Rated</option>
+            <option value="popular">Most Popular</option>
+            <option value="newest">Newest</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="stayChip" class="mb-2" style="display:none"></div>
+      <div class="rooms-grid" id="roomsGrid" style="min-height:300px"></div>
+      <div id="pagerWrap" style="margin-top:1.2rem"></div>
+    </section>
+  </div>
+</div>
+
+<div id="footslot"></div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({});
+  (function(){
+    var params=new URLSearchParams(location.search);
+    var prior=App.getSearch();
+    var stay={};
+    if(params.get('checkin')&&params.get('checkout')) stay={checkin:params.get('checkin'),checkout:params.get('checkout')};
+    else if(prior&&prior.checkin){ stay={checkin:prior.checkin,checkout:prior.checkout}; }
+
+    if((params.get('checkin'))&&(!prior||prior.checkin!==params.get('checkin'))) App.saveSearch({checkin:params.get('checkin'),checkout:params.get('checkout'),adults:+params.get('adults')||2,children:+params.get('children')||0,pets:params.get('pets')||'no',roomType:params.get('type')||''});
+
+    var state={ search:'', types:[], caps:[], amens:[], ratings:[], pet:false, availOnly:false, min:50, max:500, sort:'all', page:1, perPage:6 };
+    var grid=document.getElementById('roomsGrid'), count=document.getElementById('resultCount');
+
+    function syncInputs(){
+      document.getElementById('fMin').value=state.min; document.getElementById('fMax').value=state.max;
+      document.getElementById('fMinVal').textContent='$'+state.min; document.getElementById('fMaxVal').textContent='$'+state.max;
+      document.getElementById('fMinIn').value=state.min; document.getElementById('fMaxIn').value=state.max;
+      document.getElementById('rangeFill').style.left=(state.min-50)/450*100+'%';
+      document.getElementById('rangeFill').style.width=(state.max-state.min)/450*100+'%';
+    }
+    function checkedSet(name){ return $$('input[type=checkbox]:checked').filter(function(c){return c.name===name;}).map(function(c){return c.value;}); }
+    function applyPriors(){
+      if(params.get('type')){ state.types=params.get('type').split(','); }
+      var sEls=document.querySelectorAll('.f-group input[type=checkbox]');
+      sEls.forEach(function(c){ if(state.types.indexOf(c.value)>-1&&c.closest('.f-group').querySelector('h4').textContent==='Room type') c.checked=true; });
+    }
+    function filterRooms(){
+      var all=App.getRooms();
+      var q=state.search.trim().toLowerCase();
+      var res=all.filter(function(r){
+        if(q){ var hay=(r.name+' '+r.type+' '+r.view+' '+r.beds+' '+r.description).toLowerCase(); if(hay.indexOf(q)===-1)return false; }
+        var eff=r.price-(r.price*(r.discount||0)/100);
+        if(eff<state.min||eff>state.max)return false;
+        if(state.types.length&&state.types.indexOf(r.type)===-1)return false;
+        if(state.caps.length){ var ok=false; state.caps.forEach(function(c){ if(r.capacity>=+c)ok=true; }); if(!ok)return false; }
+        if(state.amens.length){ for(var i=0;i<state.amens.length;i++){ if(r.amenities.indexOf(state.amens[i])===-1)return false; } }
+        if(state.ratings.length){ var okR=false; state.ratings.forEach(function(x){ if(r.rating>=+x)okR=true; }); if(!okR)return false; }
+        if(state.pet&&!r.petFriendly)return false;
+        if(state.availOnly&&r.status!=='available')return false;
+        return true;
+      });
+      res.sort(function(a,b){
+        var av=function(x){return x.price-(x.price*(x.discount||0)/100);};
+        switch(state.sort){
+          case 'all':return a.id-b.id;
+          case 'priceAsc':return av(a)-av(b);
+          case 'priceDesc':return av(b)-av(a);
+          case 'rating':return b.rating-a.rating || b.reviews-a.reviews;
+          case 'popular':return b.popularity-a.popularity;
+          case 'newest':return b.createdAt-a.createdAt;
+          default:return (b.featured?1:0)-(a.featured?1:0)|| b.popularity-a.popularity;
+        }
+      });
+      return res;
+    }
+    function render(){
+      var res=filterRooms();
+      var total=res.length, pages=Math.max(1,Math.ceil(total/state.perPage));
+      if(state.page>pages)state.page=pages;
+      var slice=res.slice((state.page-1)*state.perPage,state.page*state.perPage);
+      count.innerHTML='Showing <b>'+(total?((state.page-1)*state.perPage+1):0)+'-'+Math.min(state.page*state.perPage,total)+'</b> of <b>'+total+'</b> rooms';
+      if(!total){ grid.innerHTML=App.emptyState('search','No rooms match your filters','Try adjusting the price range or removing a few filters.','<a class="btn btn-soft btn-sm" href="/rooms?checkin=&checkout=">Clear filters</a>'); }
+      else{
+        grid.innerHTML=slice.map(cardHTML).join('');
+        wireCards(grid);
+      }
+      document.getElementById('pagerWrap').innerHTML=App.pagination(state.page,pages,goPage);
+      App.initPager(document.getElementById('pagerWrap'),goPage);
+      renderChips();
+    }
+    function goPage(p){ state.page=p; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    function renderChips(){
+      var chips=[];
+      if(stay.checkin||stay.checkout) chips.push('<span class="chip"><span data-icon="calendar"></span> '+App.fmtDate(stay.checkin||'')+' &rarr; '+App.fmtDate(stay.checkout||'')+'</span>');
+      if(state.types.length)chips.push('<span class="chip"><span data-icon="bed"></span> '+(state.types.join(', '))+'</span>');
+      if(state.min>50||state.max<500)chips.push('<span class="chip">$'+state.min+' &ndash; $'+state.max+'</span>');
+      if(state.pet)chips.push('<span class="chip"><span data-icon="heart"></span> Pet friendly</span>');
+      if(state.search)chips.push('<span class="chip"><span data-icon="search"></span> '+App.esc(state.search)+'</span>');
+      document.getElementById('appliedChips').innerHTML=chips.join('');
+      document.getElementById('stayChip').style.display=chips.length?'':'none';
+    }
+    var roomDetailsBaseUrl = location.pathname.indexOf('/user/')===0 ? '/user/room-details?id=' : '/room-details?id=';
+    function cardHTML(r){
+      var pct=r.discount||0, final=r.price-(r.price*pct/100), fav=App.isFav(r.id);
+      var amen=r.amenities.slice(0,3).map(function(a){return '<span class="amen-chip">'+a+'</span>';}).join('');
+      return '<article class="room-card" data-id="'+r.id+'">'+
+              '<div class="rc-img"><img src="'+r.images[0]+'" alt="" loading="lazy" onerror="this.onerror=null;this.outerHTML=\'<div style=&quot;height:210px;background:linear-gradient(135deg,#0d3a36,#14443f)&quot;></div>\'">'+
+              (pct?'<span class="discount-pill">'+pct+'% OFF</span>':'')+
+              '<button class="rc-fav'+(fav?' active':'')+'" data-fav aria-label="Save">'+App.icon('heart','icon')+'</button></div>'+
+              '<div class="rc-body"><div class="rc-type">'+r.type+'</div>'+
+              '<div class="rc-rate"><span class="stars">'+App.stars(r.rating)+'</span><b>'+r.rating+'</b><span>('+r.reviews+')</span></div>'+
+              '<h3 class="rc-title">'+r.name+'</h3>'+
+              '<div class="rc-meta"><span data-icon="users" class="icon" style="width:14px;height:14px"></span> '+r.capacity+' Guests &bull; '+r.beds+'</div>'+
+              '<div class="rc-meta"><span data-icon="grid2" class="icon" style="width:14px;height:14px"></span> '+r.size+' m&sup2; &bull; '+r.floor+' &bull; '+r.view+'</div>'+
+              '<div class="rc-amen">'+amen+'</div>'+
+              '<div class="rc-avail" style="color:var(--'+(r.status==='available'?'success':'danger')+')"><span class="avail-dot '+(r.status==='available'?'available':'occupied')+'"></span> '+(r.status==='available'?'Available':App.cap(r.status))+'</div>'+
+              '<div class="rc-price"><span class="now">'+App.money(final)+'</span><span class="per">/ night</span>'+(pct?'<span class="strike">'+App.money(r.price)+'</span>':'')+(pct?'<span class="badge b-discount">'+pct+'% OFF</span>':'')+'</div>'+
+              '<div class="rc-foot"><a class="btn btn-outline btn-sm" href="'+roomDetailsBaseUrl+r.id+'">More Details</a>'+
+              '<a class="btn btn-primary btn-sm" href="/booking?room='+r.id+(stay.checkin?('&checkin='+stay.checkin+'&checkout='+stay.checkout):'')+'">Book Now</a></div></div></article>';
+    }
+
+    function wireCards(root){
+      App.hydrateIcons(root);
+      root.querySelectorAll('[data-fav]').forEach(function(b){
+        b.addEventListener('click',function(){ var card=b.closest('.room-card'); var added=App.toggleFav(card.dataset.id); if(added===null)return; b.classList.toggle('active',added); App.toast(added?'Saved to favorites':'Removed from favorites',added?'success':'info'); });
+      });
+    }
+    function readChecks(){
+      state.types=$$('.f-group input[type=checkbox]').filter(function(c){return c.closest('.f-group').querySelector('h4').textContent==='Room type'&&c.checked;}).map(function(c){return c.value;});
+      state.caps=$$('.f-group input[type=checkbox]').filter(function(c){return c.closest('.f-group').querySelector('h4').textContent==='Guest capacity'&&c.checked;}).map(function(c){return +c.value;});
+      state.amens=$$('.f-group input[type=checkbox]').filter(function(c){return c.closest('.f-group').querySelector('h4').textContent==='Amenities'&&c.checked;}).map(function(c){return c.value;});
+      state.ratings=$$('.f-group input[type=checkbox]').filter(function(c){return c.closest('.f-group').querySelector('h4').textContent==='Rating'&&c.checked;}).map(function(c){return +c.value;});
+    }
+
+    var dSearch=App.debounce(function(){ state.search=document.getElementById('fSearch').value; state.page=1; render(); },250);
+    document.getElementById('fSearch').addEventListener('input',dSearch);
+
+    ['fMin','fMax'].forEach(function(id){
+      document.getElementById(id).addEventListener('input',function(){
+        var min=+document.getElementById('fMin').value, max=+document.getElementById('fMax').value;
+        if(id==='fMin'&&min>=max)document.getElementById('fMin').value=max-10;
+        if(id==='fMax'&&max<=min)document.getElementById('fMax').value=min+10;
+        state.min=+document.getElementById('fMin').value; state.max=+document.getElementById('fMax').value;
+        state.page=1; syncInputs(); render();
+      });
+    });
+    function clampMin(){ var v=+document.getElementById('fMinIn').value; if(!v||v<50)v=50; if(v>=state.max)v=state.max-10; state.min=v; document.getElementById('fMin').value=v; state.page=1; syncInputs(); render(); }
+    function clampMax(){ var v=+document.getElementById('fMaxIn').value; if(!v||v>500)v=500; if(v<=state.min)v=state.min+10; state.max=v; document.getElementById('fMax').value=v; state.page=1; syncInputs(); render(); }
+    document.getElementById('fMinIn').addEventListener('change',clampMin);
+    document.getElementById('fMaxIn').addEventListener('change',clampMax);
+
+    document.querySelectorAll('#filters input[type=checkbox]').forEach(function(c){
+      c.addEventListener('change',function(){ readChecks(); state.page=1; render(); });
+    });
+    document.getElementById('fPet').addEventListener('change',function(){ state.pet=this.checked; state.page=1; render(); });
+    document.getElementById('fAvail').addEventListener('change',function(){ state.availOnly=this.checked; state.page=1; render(); });
+    document.getElementById('sortBy').addEventListener('change',function(){ state.sort=this.value; state.page=1; render(); });
+    document.getElementById('resetFilters').addEventListener('click',function(){
+      state={search:'',types:[],caps:[],amens:[],ratings:[],pet:false,availOnly:false,min:50,max:500,sort:'all',page:1,perPage:6};
+      document.getElementById('fSearch').value=''; document.getElementById('fPet').checked=false; document.getElementById('fAvail').checked=false;
+      document.getElementById('sortBy').value='all';
+      $$('#filters input[type=checkbox]').forEach(function(c){ c.checked=false; });
+      syncInputs(); render();
+    });
+
+    syncInputs(); applyPriors(); readChecks();
+    grid.innerHTML=App.skeletonCard()+App.skeletonCard()+App.skeletonCard();
+    setTimeout(render,420);
+  })();
+</script>
+</body>
+</html>
+
+
+

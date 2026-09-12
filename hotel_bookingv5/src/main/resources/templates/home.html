@@ -1,0 +1,898 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Grand Meridian Resort | Luxury Hotel Booking &amp; Management</title>
+  <style>
+    /* ============ Home page premium redesign ============ */
+    html{scroll-behavior:smooth}
+    body.js .reveal{opacity:0;transform:translateY(26px)}
+    body.js .reveal.in{opacity:1;transform:none}
+    .reveal{transition:opacity .7s ease,transform .7s ease;will-change:opacity,transform}
+    @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{transition:none!important;transform:none!important;opacity:1!important}}
+
+    /* ---- premium navbar ---- */
+    .hnav{position:sticky;top:0;z-index:900;--topbar-h:76px;transition:background .3s ease,border-color .3s ease,box-shadow .3s ease;background:linear-gradient(180deg,rgba(8,18,16,.5),rgba(8,18,16,0));border-bottom:1px solid transparent}
+    .hnav .site-bar-in{height:76px}
+    .hnav .nav-links a{color:rgba(255,255,255,.88);font-weight:600}
+    .hnav .nav-links a:hover{color:#fff;background:rgba(255,255,255,.12)}
+    .hnav .nav-links a.active{color:#fff}
+    .hnav .nav-links a.active:after{background:var(--accent)}
+    .hnav .brand-small{color:var(--accent)}
+    .hnav.scrolled{background:var(--surface);border-bottom-color:var(--border);box-shadow:var(--shadow-sm)}
+    .hnav.scrolled .nav-links a{color:var(--text)}
+    .hnav.scrolled .nav-links a:hover{background:var(--surface-3);color:var(--primary)}
+    .hnav.scrolled .nav-links a.active{color:var(--primary)}
+    .hnav.scrolled .nav-links a.active:after{background:var(--primary)}
+    .hnav .icon-btn{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff}
+    .hnav.scrolled .icon-btn{border-color:var(--border);background:var(--surface);color:var(--text)}
+    .hnav .btn-ghost{color:rgba(255,255,255,.92)}
+    .hnav.scrolled .btn-ghost{color:var(--muted)}
+    .hnav.scrolled .btn-ghost:hover{color:var(--text);background:var(--surface-3)}
+
+    /* ---- hero (Warm Minimal) ---- */
+    .hero{min-height:min(84vh,820px);display:flex;align-items:flex-end;padding-bottom:0;background:linear-gradient(135deg,#1a2e29,#0d524d)}
+    .hero-media img{opacity:.55;filter:saturate(1.05) brightness(1.05)}
+    .hero-veil{background:linear-gradient(180deg,rgba(13,34,30,.18) 0%,rgba(13,34,30,.42) 55%,rgba(10,26,23,.78) 100%)}
+    .hero-in{max-width:780px;padding:130px 0 170px}
+    .hero .pill{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);backdrop-filter:blur(10px);font-weight:600}
+    .hero .pill .icon{color:var(--accent)}
+    .hero h1{font-size:clamp(2.5rem,5.4vw,4.1rem);text-shadow:0 2px 24px rgba(0,0,0,.25);letter-spacing:-.02em}
+    .hero p.lead{color:rgba(255,255,255,.88);font-size:1.08rem;max-width:560px;font-weight:400}
+    .hero .hero-cta{margin-top:2.2rem}
+    .hero-trust{display:flex;gap:.5rem;margin-top:2.4rem;flex-wrap:wrap}
+    .hero-trust span{display:inline-flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.92);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);padding:.4rem .9rem;border-radius:99px;backdrop-filter:blur(6px)}
+    .hero-trust .icon{width:14px;height:14px;color:var(--accent)}
+    .hero-cue{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);color:rgba(255,255,255,.7);display:flex;flex-direction:column;align-items:center;gap:.25rem;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;animation:cue 2.2s ease-in-out infinite}
+    @keyframes cue{0%,100%{transform:translate(-50%,0);opacity:.7}50%{transform:translate(-50%,8px);opacity:1}}
+
+    /* ---- search card ---- */
+    .shell{margin-top:-96px}
+    .search-card{padding:1.35rem 1.4rem;border-radius:var(--radius-lg)}
+    .search-head{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}
+    .search-head .icon{color:var(--primary)}
+    .search-head b{font-size:.98rem}
+    .search-head span{font-size:.8rem;color:var(--muted)}
+
+    /* ---- section base ---- */
+    .block{padding:54px 0}
+    .section-title{margin-bottom:2rem}
+    .section-title.center{text-align:center}
+    .section-title.center p{margin-left:auto;margin-right:auto}
+    .section-title h2{font-size:clamp(1.6rem,3.4vw,2.2rem)}
+    .section-title .line{width:56px;height:3px;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--primary));margin-top:.9rem}
+    .section-title.center .line{margin-left:auto;margin-right:auto}
+
+    /* ---- offers ---- */
+    .offer-hero{padding:72px 0;margin-top:8px;max-width:100%;overflow:hidden}
+    .offer-hero>div{max-width:100%;min-width:0;padding:0 2rem;text-align:center;overflow-wrap:anywhere;word-break:break-word}
+    .offer-hero .big{font-size:clamp(2rem,7vw,4.1rem);line-height:1.08;overflow-wrap:anywhere;word-break:break-word}
+    .offer-hero p{margin-left:auto!important;margin-right:auto!important;overflow-wrap:anywhere;word-break:break-word}
+    .offer-hero .row{max-width:100%;min-width:0;justify-content:center}
+    .offer-hero .code-chip{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+    @media (max-width:520px){.offer-hero{padding:42px 0}.offer-hero>div{padding:0 1rem}.offer-hero .big{font-size:clamp(1.8rem,10vw,2.8rem)}}
+
+    /* ---- featured rooms ---- */
+    .rooms-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.6rem}
+    .room-card:hover .rc-title{color:var(--primary)}
+    .rc-title{transition:.18s}
+    .rc-foot{gap:.6rem;margin-top:.2rem}
+
+    /* ---- about ---- */
+    .about-wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:3rem;align-items:center}
+    .about-media{position:relative}
+    .about-media img{width:100%;border-radius:var(--radius-lg);aspect-ratio:4/3;object-fit:cover;box-shadow:var(--shadow)}
+    .about-media .exp-chip{position:absolute;left:-18px;bottom:28px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;border-radius:14px;padding:1.1rem 1.3rem;text-align:center;box-shadow:var(--shadow-lg)}
+    .about-media .exp-chip b{display:block;font-family:var(--display);font-size:1.7rem;line-height:1}
+    .about-media .exp-chip span{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;opacity:.92}
+    .about-points{margin-top:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:.7rem 1.2rem}
+    .about-points li{display:flex;gap:.55rem;align-items:center;font-size:.9rem;color:var(--text);font-weight:550}
+    .about-points .icon{width:16px;height:16px;color:var(--success);flex:none}
+    .stats-grid{margin-top:2.4rem;border-top:1px solid var(--border);padding-top:2rem}
+    .stat{background:var(--surface-2)}
+
+    /* ---- why choose us ---- */
+    .why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.3rem}
+    .feature-card{position:relative;overflow:hidden}
+    .feature-card:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;background:var(--primary-soft);opacity:.5;top:-40px;right:-40px;pointer-events:none}
+    .feature-card .ico{margin-bottom:.9rem}
+    .why-grid .feature-card{text-align:center}
+    .why-grid .feature-card .ico{margin-left:auto;margin-right:auto}
+    .footer-social-brand{width:18px;height:18px;display:block;fill:currentColor}
+    .socials a{display:inline-flex;align-items:center;justify-content:center}
+    .feature-card h3{font-size:1.05rem}
+    .feature-card p{color:var(--muted);font-size:.86rem}
+
+    /* ---- amenities ---- */
+    .amm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+    .amm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.2rem;box-shadow:var(--shadow-sm);text-align:center;transition:.18s}
+    .amm-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--primary)}
+    .amm-card .ico{width:48px;height:48px;border-radius:13px;margin:0 auto .75rem;display:flex;align-items:center;justify-content:center}
+    .amm-card .ico .icon{width:22px;height:22px}
+
+    /* ---- services ---- */
+    .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.2rem}
+    .svc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:.18s}
+    .svc-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--primary)}
+    .svc-card .svc-img{height:130px;background:var(--surface-3);position:relative;overflow:hidden}
+    .svc-card .svc-img img{width:100%;height:100%;object-fit:cover;transition:.4s}
+    .svc-card:hover .svc-img img{transform:scale(1.06)}
+    .svc-card .svc-img .cat{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:.68rem;font-weight:700;padding:.22rem .6rem;border-radius:99px;backdrop-filter:blur(4px)}
+    .svc-body{padding:.95rem 1rem 1rem;display:flex;flex-direction:column;gap:.4rem;flex:1}
+    .svc-body h4{font-size:.96rem}
+    .svc-body p{font-size:.8rem;color:var(--muted);flex:1}
+    .svc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:.4rem}
+    .svc-price{font-weight:800;font-size:1.05rem;color:var(--primary)}
+
+    /* ---- dining ---- */
+    .home-food{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.2rem}
+    .hf-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);transition:.18s}
+    .hf-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--accent)}
+    .hf-card img{height:126px;width:100%;object-fit:cover;display:block;transition:.4s}
+    .hf-card:hover img{transform:scale(1.05)}
+    .hf-body{padding:1rem 1.1rem}
+
+    /* ---- gallery ---- */
+    .gal-grid{grid-template-columns:repeat(4,1fr);grid-auto-rows:190px;gap:14px}
+    @media (max-width:992px){.gal-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:640px){.gal-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:140px}}
+
+    /* Small alignment fixes: preserve the existing visual design. */
+    #whySection .feature-card{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+    }
+    #whySection .feature-card .ico{
+      margin:0 auto 1rem;
+      flex:none;
+    }
+    #whySection .feature-card h3,
+    #whySection .feature-card p{
+      width:100%;
+    }
+    #locationSection .contact-wrap{
+      align-items:stretch;
+    }
+    #locationSection .map-ph{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2rem;
+      box-sizing:border-box;
+    }
+    #locationSection .contact-cards{
+      align-content:stretch;
+    }
+    #locationSection .info-card{
+      min-height:112px;
+      box-sizing:border-box;
+    }
+    @media(max-width:640px){
+      #locationSection .contact-cards{grid-template-columns:1fr}
+      #locationSection .info-card{min-height:92px}
+    }
+    .gal-item .cap{font-weight:650}
+    .gal-item .cap .icon{width:14px;height:14px}
+
+    /* ---- reviews carousel ---- */
+    .rev-shell{position:relative}
+    .rev-track{overflow:hidden}
+    .rev-track-inner{display:flex;transition:transform .5s ease}
+    .rev-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.5rem;box-shadow:var(--shadow-sm);flex:0 0 100%;display:flex;flex-direction:column;gap:.6rem;position:relative}
+    @media (min-width:720px){.rev-card{flex-basis:50%;padding-left:1.2rem}}
+    @media (min-width:1060px){.rev-card{flex-basis:33.333%;padding-left:1rem}}
+    .rev-card .q{font-size:2.4rem;color:var(--accent);font-family:var(--display);line-height:.6;margin-top:.3rem}
+    .rev-card p{color:var(--text);font-size:.9rem;flex:1}
+    .rev-card .stars{color:var(--accent);font-size:.85rem}
+    .rev-nav{display:flex;gap:.6rem;margin-top:1.4rem;justify-content:center}
+    .rev-nav button{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.16s;box-shadow:var(--shadow-sm)}
+    .rev-nav button:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-2px)}
+    .rev-nav button .icon{width:18px;height:18px}
+    .rev-dots{display:flex;gap:.4rem;justify-content:center;margin-top:.8rem}
+    .rev-dots i{width:7px;height:7px;border-radius:99px;background:var(--border-strong);cursor:pointer;transition:.2s}
+    .rev-dots i.on{width:22px;background:var(--primary)}
+
+    /* ---- contact / location ---- */
+    .contact-wrap{display:grid;grid-template-columns:1.15fr 1fr;gap:2.4rem;align-items:stretch}
+    .contact-cards{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .info-card{display:flex;gap:.9rem;padding:1.15rem 1.2rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);align-items:flex-start;transition:.16s}
+    .info-card:hover{border-color:var(--primary);transform:translateY(-2px)}
+    .info-card .ico{width:44px;height:44px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center}
+    .info-card .k{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+    .info-card .v{font-weight:650;font-size:.9rem;margin-top:.15rem;word-break:break-word}
+    .map-ph{height:100%;min-height:320px;background:linear-gradient(160deg,#0d3a36,#123f3b);color:#fff}
+    .map-ph .pin{background:var(--accent);box-shadow:0 6px 18px rgba(177,138,61,.45)}
+    .map-ph .addr{color:rgba(255,255,255,.85);max-width:320px;text-align:center;font-size:.9rem}
+
+    /* ---- newsletter ---- */
+    .news-band{background:linear-gradient(135deg,#0a3a37,#0d524d);border-radius:var(--radius-lg);padding:2.6rem 2.8rem;color:#fff;display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;align-items:center;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+    .news-band:before{content:"";position:absolute;width:320px;height:320px;border-radius:50%;background:rgba(255,255,255,.06);top:-160px;right:-120px}
+    .news-band h3{color:#fff;font-family:var(--display);font-size:1.7rem}
+    .news-band p{color:rgba(255,255,255,.82);margin-top:.4rem;font-size:.92rem;max-width:520px}
+    .news-form{display:flex;gap:.6rem;position:relative;z-index:2;flex-wrap:wrap}
+    .news-form .input{flex:1;min-width:200px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:var(--radius-sm)}
+    .news-form .input::placeholder{color:rgba(255,255,255,.6)}
+    .news-form .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(177,138,61,.25);background:rgba(255,255,255,.16)}
+    .news-form .input.invalid{border-color:#ff7b8a}
+
+    /* ---- final cta ---- */
+    .cta-strip{margin-top:2rem;background:linear-gradient(120deg,var(--primary),#083232);border-radius:var(--radius-lg);padding:2.6rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;position:relative;overflow:hidden}
+    .cta-strip:after{content:"";position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.05);bottom:-140px;left:-80px}
+    .cta-strip h3{color:#fff;font-family:var(--display);font-size:1.7rem}
+    .cta-strip p{color:rgba(255,255,255,.82);margin-top:.3rem}
+
+    /* ---- footer ---- */
+    .site-foot{margin-top:56px;padding:52px 0 0}
+    .site-foot .fgrid{grid-template-columns:1.8fr 1fr 1fr 1.3fr;gap:2.4rem}
+    .foot-contact li{display:flex;gap:.5rem;align-items:flex-start}
+    .foot-contact .icon{width:15px;height:15px;color:var(--accent);margin-top:2px;flex:none}
+    .foot-links a:hover{padding-left:4px}
+
+    /* ---- responsive ---- */
+    @media (max-width:992px){
+      .about-wrap,.contact-wrap{grid-template-columns:1fr}
+      .about-media{order:-1}
+      .about-media img{aspect-ratio:16/9}
+      .about-media .exp-chip{left:16px;bottom:-22px}
+      .news-band{grid-template-columns:1fr}
+      .contact-cards{grid-template-columns:1fr 1fr}
+      .map-ph{min-height:260px}
+    }
+    @media (max-width:768px){
+      .shell{margin-top:-80px}
+      .search-grid{grid-template-columns:1fr 1fr}
+      .search-card .go{grid-column:1/-1}
+      .contact-cards{grid-template-columns:1fr}
+      .about-points{grid-template-columns:1fr}
+    }
+    @media (max-width:520px){
+      .hero{min-height:72vh}
+      .hero-trust span{font-size:.74rem}
+      .news-form{flex-direction:column}
+      .cta-strip{padding:2rem;text-align:center;justify-content:center}
+      .site-foot .fgrid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+
+<body data-chrome="public" data-active="home">
+<nav class="hnav" id="topNav">
+  <div class="container site-bar-in" style="justify-content:flex-start">
+    <a th:href="@{/}" class="logo">
+      <span class="mark"><span data-icon="feather"></span></span>
+      <span data-nav-brand>Grand Meridian Resort<span class="brand-small">Resort &amp; Spa</span></span>
+    </a>
+    <nav class="nav-links" id="homeNavLinks">
+      <a th:href="@{/}" class="active">Home</a>
+      <a th:href="@{/rooms}">Rooms</a>
+      <a th:href="@{/about}">About</a>
+      <a th:href="@{/offers}">Offers</a>
+      <a href="#servicesSection">Services</a>
+      <a th:href="@{/contact}">Contact</a>
+      <a th:href="@{/login}" class="nav-auth-mob">Login</a>
+      <a th:href="@{/register}" class="nav-auth-mob">Register</a>
+    </nav>
+    <div class="bar-actions" id="navActions">
+      <button class="icon-btn" data-theme-toggle data-theme-icon title="Toggle theme"><span data-icon="moon"></span></button>
+      <a th:href="@{/login}" class="btn btn-ghost hide-sm" id="navLogin">Login</a>
+      <a th:href="@{/register}" class="btn btn-primary btn-sm" id="navRegister">Register</a>
+      <button class="icon-btn burger" id="navBurger" title="Menu"><span data-icon="menu"></span></button>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-media"><img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1800&q=70" alt="Grand Meridian Resort exterior at dusk" onerror="this.style.display='none'"></div>
+  <div class="hero-veil"></div>
+  <div class="hero-in container">
+    <div class="pill reveal"><span data-icon="sparkles"></span> Rated <b>4.8/5</b> by 50,000+ guests</div>
+    <h1 id="heroTitle" class="reveal">Find Your Next Stay</h1>
+    <p class="lead reveal" id="heroSub">Unwind in the heart of the coastline. Breathtaking sea views, five-star hospitality and moments that stay with you long after checkout.</p>
+    <div class="hero-cta reveal">
+      <a th:href="@{/rooms}" class="btn btn-accent btn-lg" id="heroCta">Explore Rooms <span data-icon="arrowRight" class="icon" style="width:18px;height:18px"></span></a>
+      <a th:href="@{/offers}" class="btn btn-lg" style="border:1px solid rgba(255,255,255,.4);color:#fff;background:rgba(255,255,255,.08)">View Offers</a>
+    </div>
+    <div class="hero-trust reveal" id="heroTrust">
+      <span><span data-icon="checkCircle"></span> Best-rate guarantee</span>
+      <span><span data-icon="key"></span> Instant confirmation</span>
+      <span><span data-icon="shield"></span> Free cancellation</span>
+      <span><span data-icon="wifi"></span> Complimentary WiFi</span>
+    </div>
+  </div>
+  <div class="hero-cue">Scroll <span data-icon="chevDown" class="icon" style="width:16px;height:16px"></span></div>
+</div>
+
+<div class="container">
+  <div class="shell">
+    <div class="search-card reveal">
+      <div class="search-head"><span data-icon="search"></span> <b>Find your perfect stay</b> <span>· check-in to check-out</span></div>
+      <form id="searchForm" class="search-grid">
+        <div class="sq">
+          <label for="sqCheckin"><span data-icon="calendar"></span> Check-in</label>
+          <input class="input" type="date" id="sqCheckin" style="padding:0 .8rem">
+        </div>
+        <div class="sq">
+          <label for="sqCheckout"><span data-icon="calendar"></span> Check-out</label>
+          <input class="input" type="date" id="sqCheckout" style="padding:0 .8rem">
+        </div>
+        <div class="sq">
+          <label><span data-icon="users"></span> Guests</label>
+          <select class="input" id="sqAdults"><option value="1">1 Adult</option><option value="2" selected>2 Adults</option><option value="3">3 Adults</option><option value="4">4 Adults</option><option value="5">5 Adults</option><option value="6">6+ Adults</option></select>
+        </div>
+        <div class="sq">
+          <label><span data-icon="users"></span> Children</label>
+          <select class="input" id="sqChildren"><option value="0" selected>No children</option><option value="1">1 Child</option><option value="2">2 Children</option><option value="3">3 Children</option><option value="4">4 Children</option></select>
+        </div>
+        <div class="sq">
+          <label><span data-icon="car"></span> Pets</label>
+          <select class="input" id="sqPets"><option value="no">No pets</option><option value="yes">Traveling with pets</option></select>
+        </div>
+        <div class="sq">
+          <label><span data-icon="bed"></span> Room type</label>
+          <select class="input" id="sqRoom"><option value="">Any room</option><option>Single</option><option>Double</option><option>Twin</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Premium</option></select>
+        </div>
+        <button class="btn btn-primary btn-lg go" type="submit" id="searchBtn" style="grid-column:1/-1"><span data-icon="search" class="icon"></span> Search Available Rooms</button>
+      </form>
+    </div>
+  </div>
+
+  <section class="block" id="promoSection" style="display:none">
+    <div class="offer-hero" id="promoHero"></div>
+  </section>
+
+  <section class="block" id="featuredSection">
+    <div class="section-title featured-head">
+      <div class="reveal"><div class="eyebrow">Handpicked for you</div><h2>Featured Rooms &amp; Suites</h2><div class="line"></div><p>Our most-loved rooms and suites, chosen by guests who keep coming back.</p></div>
+      <a th:href="@{/rooms}" class="btn btn-outline reveal">View all rooms <span data-icon="arrowRight" class="icon" style="width:16px;height:16px"></span></a>
+    </div>
+    <div class="rooms-grid" id="featuredGrid"></div>
+  </section>
+
+  <section class="block" id="aboutSection">
+    <div class="about-wrap">
+      <div class="about-media reveal">
+        <img src="https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=820&q=70" alt="Resort gardens and pool at dusk">
+        <div class="exp-chip"><b>10+</b><span>Years of<br>hospitality</span></div>
+      </div>
+      <div class="reveal">
+        <div class="eyebrow" style="color:var(--accent);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:.72rem">About the resort</div>
+        <h2 class="mt-2" id="aboutTitle" style="font-family:var(--display);font-size:clamp(1.5rem,3vw,2rem)">A destination in itself</h2>
+        <div class="line"></div>
+        <p class="text-muted mt-2" style="max-width:560px;line-height:1.7" id="aboutText">Since 2016, Grand Meridian Resort has welcomed travellers from more than 60 countries to a quiet stretch of shoreline.</p>
+        <ul class="about-points" id="aboutPoints">
+          <li><span data-icon="checkCircle"></span> Beachfront luxury resort</li>
+          <li><span data-icon="checkCircle"></span> 150+ rooms &amp; suites</li>
+          <li><span data-icon="checkCircle"></span> Fine dining &amp; rooftop bar</li>
+          <li><span data-icon="checkCircle"></span> Spa, pool &amp; wellness</li>
+        </ul>
+        <a th:href="@{/about}" class="btn btn-soft mt-3">More about us <span data-icon="arrowRight" class="icon" style="width:16px;height:16px"></span></a>
+      </div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </section>
+
+  <section class="block" id="whySection" style="background:var(--surface-2);border-radius:var(--radius-lg);padding-left:2rem;padding-right:2rem">
+    <div class="section-title center reveal">
+      <div class="eyebrow">The Grand Meridian difference</div>
+      <h2>Why book directly with us</h2>
+      <div class="line"></div>
+      <p>Reserve straight from the source and unlock perks you won't find anywhere else.</p>
+    </div>
+    <div class="why-grid">
+      <div class="feature-card reveal"><div class="ico ico-accent"><span data-icon="dollar"></span></div><h3>Best-rate guarantee</h3><p>Book on our site and we'll match any lower price you find — plus an extra 10% off.</p></div>
+      <div class="feature-card reveal"><div class="ico ico-primary"><span data-icon="calendar"></span></div><h3>Flexible free cancellation</h3><p>Plans change. Cancel up to 48 hours before arrival for a full, no-questions refund.</p></div>
+      <div class="feature-card reveal"><div class="ico ico-accent"><span data-icon="zap"></span></div><h3>Instant confirmation</h3><p>Your room is reserved the moment you book, with your details in the app instantly.</p></div>
+      <div class="feature-card reveal"><div class="ico ico-primary"><span data-icon="sparkles"></span></div><h3>Complimentary upgrades</h3><p>Direct guests get priority on upgrades, early check-in and late checkout on request.</p></div>
+    </div>
+  </section>
+
+  <section class="block" id="amenitySection">
+    <div class="section-title center reveal">
+      <div class="eyebrow">Everything on site</div>
+      <h2>Resort amenities</h2>
+      <div class="line"></div>
+      <p>World-class facilities designed around relaxation, dining and discovery.</p>
+    </div>
+    <div class="amm-grid" id="ammGrid"></div>
+  </section>
+
+  <section class="block" id="servicesSection">
+    <div class="section-title featured-head">
+      <div class="reveal"><div class="eyebrow">Made effortless</div><h2>Services we offer</h2><div class="line"></div><p>Signature services delivered to your room or arranged around your day.</p></div>
+      <a th:href="@{/user/food-services}" class="btn btn-outline reveal">All services <span data-icon="arrowRight" class="icon" style="width:16px;height:16px"></span></a>
+    </div>
+    <div class="svc-grid" id="svcGrid"></div>
+  </section>
+
+  <section class="block" id="foodSection" style="background:var(--surface-2);border-radius:var(--radius-lg);padding-left:2rem;padding-right:2rem">
+    <div class="section-title featured-head">
+      <div class="reveal"><div class="eyebrow">Taste the coast</div><h2>Dining &amp; in-room treats</h2><div class="line"></div><p>A selection from our kitchens, delivered to your room or enjoyed by the water.</p></div>
+      <a th:href="@{/user/food-services}" class="btn btn-outline reveal">Explore menu <span data-icon="arrowRight" class="icon" style="width:16px;height:16px"></span></a>
+    </div>
+    <div class="home-food" id="foodGrid"></div>
+  </section>
+
+  <section class="block" id="gallerySection">
+    <div class="section-title center reveal">
+      <div class="eyebrow">Rendered in pictures</div>
+      <h2>Gallery</h2>
+      <div class="line"></div>
+      <p>Wander through the resort — from sunrise over the bay to candlelit dinners on the rooftop.</p>
+    </div>
+    <div class="gal-grid" id="galGrid"></div>
+  </section>
+
+  <section class="block" id="reviewsSection" style="background:var(--surface-2);border-radius:var(--radius-lg);padding-left:2rem;padding-right:2rem">
+    <div class="section-title center reveal">
+      <div class="eyebrow">Guest stories</div>
+      <h2>What our guests say</h2>
+      <div class="line"></div>
+      <p>Real words from travellers who made Grand Meridian their escape.</p>
+    </div>
+    <div class="rev-shell reveal">
+      <div class="rev-track"><div class="rev-track-inner" id="revTrack"></div></div>
+      <div class="rev-dots" id="revDots"></div>
+      <div class="rev-nav">
+        <button id="revPrev" aria-label="Previous reviews"><span data-icon="chevLeft"></span></button>
+        <button id="revNext" aria-label="Next reviews"><span data-icon="chevRight"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="locationSection">
+    <div class="section-title center reveal">
+      <div class="eyebrow">Find your way here</div>
+      <h2>Location &amp; contact</h2>
+      <div class="line"></div>
+      <p>Right on the water, minutes from the heart of Cox's Bazar.</p>
+    </div>
+    <div class="contact-wrap">
+      <div class="map-ph reveal" id="mapBox">
+        <span class="pin"><span data-icon="pin" class="icon" style="width:26px;height:26px"></span></span>
+        <div class="addr" id="mapAddr">51 Marine Drive, Cox's Bazar 4700, Bangladesh</div>
+        <a class="btn btn-accent btn-sm" id="mapBtn" href="#" target="_blank" rel="noopener">Open in maps <span data-icon="arrowRight" class="icon" style="width:15px;height:15px"></span></a>
+      </div>
+      <div class="contact-cards" id="contactCards"></div>
+    </div>
+  </section>
+
+  <section class="block" id="newsSection" style="padding-bottom:20px">
+    <div class="news-band reveal">
+      <div>
+        <h3>Get offers &amp; seasonal deals first</h3>
+        <p>Join our newsletter for member-only rates, early access to promos and a little coastal inspiration. No spam, ever.</p>
+      </div>
+      <form class="news-form" id="newsForm" novalidate>
+        <input class="input" type="email" id="newsEmail" placeholder="you@example.com" autocomplete="email" aria-label="Email address">
+        <button class="btn btn-accent" type="submit">Subscribe</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="cta-strip reveal">
+    <div><h3>Ready to escape?</h3><p>Book directly and we'll include breakfast on your first morning.</p></div>
+    <a th:href="@{/rooms}" class="btn btn-accent btn-lg">Book your stay <span data-icon="arrowRight" class="icon" style="width:18px;height:18px"></span></a>
+  </section>
+</div>
+
+<footer class="site-foot" id="foot">
+  <div class="container">
+    <div class="fgrid">
+      <div>
+        <div class="row" style="gap:.6rem"><span class="mark logo" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#0a3a37);color:#fff;display:inline-flex;align-items:center;justify-content:center"><span data-icon="feather" class="icon"></span></span><span class="font-display" style="font-size:1.1rem;font-weight:700" data-foot-brand>Grand Meridian Resort</span></div>
+        <p class="brand-desc" id="footAbout">A serene five-star beachfront resort crafted for restorative escapes along the Bay of Bengal.</p>
+        <div class="socials mt-3" id="footSocials">
+          <a href="#" title="Facebook"><span data-icon="share"></span></a>
+          <a href="#" title="Instagram"><span data-icon="camera"></span></a>
+          <a href="#" title="X"><span data-icon="globe"></span></a>
+          <a href="#" title="YouTube"><span data-icon="play" data-fallback="more"></span></a>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul class="foot-links">
+          <li><a th:href="@{/rooms}">Our Rooms</a></li>
+          <li><a th:href="@{/offers}">Offers &amp; Deals</a></li>
+          <li><a th:href="@{/about}">About Us</a></li>
+          <li><a th:href="@{/admin/gallery-management}">Gallery</a></li>
+          <li><a th:href="@{/contact}">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Services</h4>
+        <ul class="foot-links">
+          <li><a href="/rooms?type=Suite">Suites</a></li>
+          <li><a href="/rooms?type=Family">Family Rooms</a></li>
+          <li><a href="/rooms?type=Premium">Premium</a></li>
+          <li><a th:href="@{/user/food-services}">Dining &amp; Room Service</a></li>
+          <li><a th:href="@{/about}">Spa &amp; Wellness</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul class="foot-contact">
+          <li><span data-icon="pin"></span> <span id="footAddr">51 Marine Drive, Cox's Bazar 4700, Bangladesh</span></li>
+          <li><span data-icon="phone"></span> <a href="tel:PLACEHOLDER_PHONE" id="footPhone">+880 3421 555 100</a></li>
+          <li><span data-icon="mail"></span> <a href="mailto:PLACEHOLDER_EMAIL" id="footEmail">hello@grandmeridian.com</a></li>
+          <li><span data-icon="clock"></span> <span class="text-sm" id="footHours">Front desk open 24/7 • Reservations 8 AM – 11 PM</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="footYear">2026</span> Grand Meridian Resort. All rights reserved.</span>
+      <span>Hotel Booking Management System — Created by Rabbi</span>
+    </div>
+  </div>
+</footer>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SITE_CONTENT__ = {
+    hotelName: /*[[${siteContent.hotelName}]]*/ '',
+    tagline: /*[[${siteContent.tagline}]]*/ '',
+    heroTitle: /*[[${siteContent.heroTitle}]]*/ '',
+    heroSub: /*[[${siteContent.heroSub}]]*/ '',
+    heroBtn: /*[[${siteContent.heroBtn}]]*/ '',
+    aboutTitle: /*[[${siteContent.aboutTitle}]]*/ '',
+    aboutText: /*[[${siteContent.aboutText}]]*/ '',
+    aboutPoints: /*[[${siteContent.aboutPoints}]]*/ '',
+    roomsValue: /*[[${siteContent.roomsValue}]]*/ '',
+    roomsLabel: /*[[${siteContent.roomsLabel}]]*/ '',
+    guestsValue: /*[[${siteContent.guestsValue}]]*/ '',
+    guestsLabel: /*[[${siteContent.guestsLabel}]]*/ '',
+    yearsValue: /*[[${siteContent.yearsValue}]]*/ '',
+    yearsLabel: /*[[${siteContent.yearsLabel}]]*/ '',
+    ratingValue: /*[[${siteContent.ratingValue}]]*/ '',
+    ratingLabel: /*[[${siteContent.ratingLabel}]]*/ '',
+    footerAbout: /*[[${siteContent.footerAbout}]]*/ '',
+    address: /*[[${siteContent.address}]]*/ '',
+    phone: /*[[${siteContent.phone}]]*/ '',
+    email: /*[[${siteContent.email}]]*/ '',
+    supportHours: /*[[${siteContent.supportHours}]]*/ '',
+    latitude: /*[[${siteContent.latitude}]]*/ '',
+    longitude: /*[[${siteContent.longitude}]]*/ '',
+    facebookUrl: /*[[${siteContent.facebookUrl}]]*/ '',
+    instagramUrl: /*[[${siteContent.instagramUrl}]]*/ '',
+    twitterUrl: /*[[${siteContent.twitterUrl}]]*/ '',
+    youtubeUrl: /*[[${siteContent.youtubeUrl}]]*/ ''
+  };
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  window.__SERVER_GALLERY__ = /*[[${galleryForJs}]]*/ [];
+  window.__SERVER_PROMOS__ = /*[[${promosForJs}]]*/ [];
+  window.__SERVER_PROMOCODES__ = /*[[${promoCodesForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="none">
+
+  App.boot({});
+  (function(){
+    "use strict";
+    document.body.classList.add('js');
+    var C=window.__SITE_CONTENT__||{};
+    var todayISO=App.todayISO();
+
+    /* ---------- brand + hero copy ---------- */
+    if(C.hotelName){ var bn=document.querySelector('[data-nav-brand]'); if(bn) bn.innerHTML=App.esc(C.hotelName)+'<span class="brand-small">'+App.esc(C.tagline||'')+'</span>'; }
+    var heroTitle=document.getElementById('heroTitle'); if(heroTitle) heroTitle.textContent=C.heroTitle||'';
+    var heroSub=document.getElementById('heroSub'); if(heroSub) heroSub.textContent=C.heroSub||'';
+    var heroCta=document.getElementById('heroCta');
+    if(heroCta&&C.heroBtn) heroCta.childNodes[0].nodeValue=' '+C.heroBtn+' ';
+    var abtT=document.getElementById('aboutTitle'); if(abtT) abtT.textContent=C.aboutTitle||'';
+    var abtB=document.getElementById('aboutText'); if(abtB) abtB.textContent=C.aboutText||'';
+    var pts=document.getElementById('aboutPoints');
+    var aboutPoints=String(C.aboutPoints||'').split(/\r?\n/).map(function(p){return p.trim();}).filter(function(p){return p.length>0;});
+    if(pts){
+      pts.innerHTML=aboutPoints.map(function(p){ return '<li><span data-icon="checkCircle"></span> '+App.esc(p)+'</li>'; }).join('');
+      pts.style.display=aboutPoints.length?'':'none';
+    }
+    document.title=C.hotelName? (C.hotelName+' | Luxury Hotel Booking & Management') : document.title;
+
+    /* ---------- premium navbar: scroll state ---------- */
+    var nav=document.getElementById('topNav');
+    function onScroll(){ if(nav) nav.classList.toggle('scrolled', window.scrollY>24); }
+    window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+    /* ---------- navbar actions: public sign-in / register (always shown) ---------- */
+    var navLogin=document.getElementById('navLogin'), navRegister=document.getElementById('navRegister');
+    if(navLogin) navLogin.addEventListener('click',function(){ location.href='/login'; });
+    if(navRegister) navRegister.addEventListener('click',function(){ location.href='/register'; });
+
+    /* ---------- mobile nav toggle ---------- */
+    var burger=document.getElementById('navBurger');
+    if(burger) burger.addEventListener('click',function(){ var ml=document.getElementById('homeNavLinks'); if(ml) ml.classList.toggle('mobile-open'); });
+
+    /* ---------- search form ---------- */
+    var qk=document.getElementById('sqCheckin'), qo=document.getElementById('sqCheckout');
+    var cin=new Date(); cin.setDate(cin.getDate()+1);
+    var cout=new Date(); cout.setDate(cout.getDate()+4);
+    var prev=App.getSearch();
+    if(prev&&prev.checkin){ qk.value=prev.checkin; qo.value=prev.checkout||prev.checkin; }
+    else { qk.value=App.fmtDateISO(cin); qo.value=App.fmtDateISO(cout); }
+    qk.min=todayISO; qo.min=todayISO;
+    qk.addEventListener('change',function(){ if(qo.value&&App.nights(qk.value,qo.value)<=0) qo.value=App.fmtDateISO(App.addDays(App.parseISO(qk.value),1)); qo.min=qk.value; });
+    document.getElementById('searchForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      if(App.nights(qk.value,qo.value)<=0){ App.toast('Check-out must be after check-in.','warning'); return; }
+      App.saveSearch({checkin:qk.value,checkout:qo.value,adults:+document.getElementById('sqAdults').value,children:+document.getElementById('sqChildren').value,pets:document.getElementById('sqPets').value,roomType:document.getElementById('sqRoom').value});
+      var p=new URLSearchParams(); p.set('checkin',qk.value); p.set('checkout',qo.value);
+      p.set('adults',document.getElementById('sqAdults').value); p.set('children',document.getElementById('sqChildren').value);
+      location.href='/rooms?'+p.toString();
+    });
+
+    /* Database rooms only; no demo/localStorage fallback. */
+    var databaseRooms=Array.isArray(window.__SERVER_ROOMS__)
+            ? window.__SERVER_ROOMS__.filter(function(room){return room && room.id!=null;})
+            : [];
+
+    function databaseRoomById(id){
+      return databaseRooms.filter(function(room){return String(room.id)===String(id);});
+    }
+
+    /* ---------- special offers (hides when none) ---------- */
+    var promo=App.activePromo();
+    if(promo){
+      var ps=document.getElementById('promoSection'); if(ps) ps.style.display='';
+      var validRooms=promo.roomId ? databaseRoomById(promo.roomId) : databaseRooms;
+      var promoRoom=validRooms[0];
+      var ph=document.getElementById('promoHero');
+      if(ph) ph.innerHTML='<div style="position:relative;z-index:2" class="reveal in">'+
+              '<div class="tag">Special offer • '+App.fmtDate(promo.start)+' → '+App.fmtDate(promo.end)+'</div>'+
+              '<div class="big mt-2">'+App.esc(promo.title)+'<br><span style="color:#fff;font-size:.45em">'+((promo.value||0)+'% OFF')+'</span></div>'+
+              '<p style="color:rgba(255,255,255,.85);max-width:560px;margin-top:1rem">'+App.esc(promo.description)+'</p>'+
+              '<div class="row mt-3" style="gap:.8rem;flex-wrap:wrap"><a class="btn btn-accent btn-lg" href="'+(promoRoom?'/booking?room='+promoRoom.id:'/rooms')+'">Book Now</a>'+
+              (promo.code?'<span class="code-chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,217,106,.6);color:#ffd97a">Code: '+App.esc(promo.code)+'</span>':'')+'</div></div>';
+    }
+
+
+    function cardHTML(r){
+      var pct=r.discount||0; var final=r.price-(r.price*pct/100);
+      var fav=App.isFav(r.id);
+      var beds=r.capacity+' Guests • '+r.beds;
+      var amen=r.amenities.slice(0,3).map(function(a){return '<span class="amen-chip"><span data-icon="'+iconKey(a)+'"></span>'+a+'</span>';}).join('');
+      return '<article class="room-card reveal in" data-id="'+r.id+'">'+
+              '<div class="rc-img"><img src="'+r.images[0]+'" alt="'+App.esc(r.name)+'" loading="lazy" onerror="this.onerror=null;this.outerHTML=\'<div style=&quot;height:210px;background:linear-gradient(135deg,#0d3a36,#14443f)&quot;></div>\'">'+
+              (pct?'<span class="discount-pill">'+pct+'% OFF</span>':'')+
+              '<button class="rc-fav'+(fav?' active':'')+'" data-fav aria-label="Save room"><span data-icon="heart"></span></button></div>'+
+              '<div class="rc-body">'+
+              '<div class="rc-type">'+App.esc(r.type)+'</div>'+
+              '<div class="rc-rate"><span class="stars">'+App.stars(r.rating)+'</span><b>'+r.rating+'</b><span>('+r.reviews+')</span></div>'+
+              '<h3 class="rc-title">'+App.esc(r.name)+'</h3>'+
+              '<div class="rc-meta"><span data-icon="users" class="icon" style="width:14px;height:14px"></span> '+beds+'</div>'+
+              '<div class="rc-meta"><span data-icon="grid2" class="icon" style="width:14px;height:14px"></span> '+r.size+' m&sup2; • Floor '+r.floor+' • '+App.esc(r.view)+'</div>'+
+              '<div class="rc-amen">'+amen+'</div>'+
+              '<div class="rc-avail" style="color:var(--'+(r.status==='available'?'success':'danger')+')"><span class="avail-dot '+(r.status==='available'?'available':'occupied')+'"></span> '+(r.status==='available'?'Available now':App.cap(r.status))+'</div>'+
+              '<div class="rc-price"><span class="now">'+App.money(final)+'</span><span class="per">/ night</span>'+(pct?'<span class="strike">'+App.money(r.price)+'</span>':'')+'</div>'+
+              '<div class="rc-foot"><a class="btn btn-outline btn-sm" href="/room-details?id='+r.id+'">More Details</a>'+
+              '<a class="btn btn-primary btn-sm" href="/booking?room='+r.id+(qk.value?('&checkin='+qk.value+'&checkout='+qo.value+'&adults='+document.getElementById('sqAdults').value+'&children='+document.getElementById('sqChildren').value):'')+'">Book Now</a></div>'+
+              '</div></article>';
+    }
+    /* ---------- featured rooms: STRICT DATABASE ONLY ---------- */
+    var featuredSection=document.getElementById('featuredSection');
+    var grid=document.getElementById('featuredGrid');
+
+    /*
+     * __SERVER_ROOMS__ is created by Thymeleaf from HomeController.roomsForJs.
+     * Do not call App.getRooms() here: that method can return demo/localStorage data.
+     * Show at most six database rooms. Hide the whole section when the database is empty.
+     */
+    var roomsToShow=databaseRooms.slice(0,6);
+
+    if(!roomsToShow.length){
+      if(featuredSection) featuredSection.style.display='none';
+    }else if(grid){
+      grid.innerHTML=roomsToShow.map(cardHTML).join('');
+      wireCards(grid);
+    }
+
+    function iconKey(a){ return a==='WiFi'?'wifi':a==='Air Conditioning'?'zap':a==='TV'?'layout':a==='Breakfast'?'coffee':a==='Parking'?'car':a==='Pool'?'droplet':a==='Gym'?'activity':a==='Spa'?'sparkles':a==='Balcony'?'home':a==='Room Service'?'clock2':'check'; }
+
+    function wireCards(root){
+      App.hydrateIcons(root);
+      root.querySelectorAll('[data-fav]').forEach(function(b){
+        b.addEventListener('click',function(){
+          var card=b.closest('.room-card');
+          var added=App.toggleFav(card.dataset.id);
+          if(added===null)return; // not logged in - App.toggleFav is already redirecting to /login
+          b.classList.toggle('active',added);
+          App.toast(added?'Saved to favorites':'Removed from favorites',added?'success':'info');
+          var board=document.querySelector('[data-favcount]'); if(board)board.textContent=App.favs().length;
+        });
+      });
+    }
+
+    /* ---------- stats ---------- */
+    var stats=[
+      {k:C.roomsValue||'',v:C.roomsLabel||''},
+      {k:C.guestsValue||'',v:C.guestsLabel||''},
+      {k:C.yearsValue||'',v:C.yearsLabel||''},
+      {k:C.ratingValue||'',v:C.ratingLabel||''}
+    ].filter(function(s){return s.k.trim()!==''||s.v.trim()!=='';});
+    var statsGrid=document.getElementById('statsGrid');
+    if(statsGrid){
+      statsGrid.innerHTML=stats.map(function(s){ return '<div class="stat reveal"><div class="n">'+App.esc(s.k)+'</div><div class="l">'+App.esc(s.v)+'</div></div>'; }).join('');
+      statsGrid.style.display=stats.length?'':'none';
+    }
+
+    /* ---------- amenities ---------- */
+    var amms=[
+      {i:'wifi',t:'High-speed WiFi',d:'Free throughout the resort'},
+      {i:'droplet',t:'Infinity Pool',d:'Overlooking the bay'},
+      {i:'activity',t:'Fitness Center',d:'Open 24/7'},
+      {i:'sparkles',t:'Spa & Wellness',d:'Rooftop treatments'},
+      {i:'car',t:'Valet Parking',d:'Complimentary for guests'},
+      {i:'utensils',t:'Signature Dining',d:'Beachfront restaurant'},
+      {i:'coffee',t:'Room Service',d:'Breakfast in bed'},
+      {i:'checkCircle',t:'24/7 Front Desk',d:'Always here for you'}
+    ];
+    document.getElementById('ammGrid').innerHTML=amms.map(function(a){
+      return '<div class="amm-card reveal"><div class="ico ico-accent"><span data-icon="'+a.i+'"></span></div><div class="strong" style="font-size:.92rem">'+a.t+'</div><div class="text-xs" style="color:var(--muted)">'+a.d+'</div></div>';
+    }).join('');
+    App.hydrateIcons(document.getElementById('ammGrid'));
+
+    /* ---------- services ---------- */
+    var svcGrid=document.getElementById('svcGrid');
+    var svcs=[
+      {img:'photo-1544161515-4ab6ce6db874',cat:'Spa',name:'Rooftop Spa Sessions',price:45,d:'60-minute aromatherapy massage with ocean views.'},
+      {img:'photo-1514362545857-3bc16c4c7d1b',cat:'Transfer',name:'Airport Pickup',price:35,d:'Private chauffeured transfer with a welcome sign.'},
+      {img:'photo-1584622650111-993a426fbf0a',cat:'Laundry',name:'Laundry Express',price:12,d:'Same-day wash, press and fold for up to 5 items.'},
+      {img:'photo-1509042239860-f550ce710b93',cat:'Dining',name:'Breakfast in Bed',price:18,d:'Fresh continental breakfast delivered to your door.'}
+    ];
+    svcGrid.innerHTML=svcs.map(function(s){
+      return '<div class="svc-card reveal"><div class="svc-img"><span class="cat">'+s.cat+'</span><img src="https://images.unsplash.com/'+s.img+'?auto=format&fit=crop&w=520&q=66" alt="'+App.esc(s.name)+'" loading="lazy" onerror="this.style.background=\'linear-gradient(135deg,#0d3a36,#14443f)\';this.removeAttribute(\'src\')"></div>'+
+              '<div class="svc-body"><h4>'+App.esc(s.name)+'</h4><p>'+App.esc(s.d)+'</p>'+
+              '<div class="svc-foot"><span class="svc-price">'+App.money(s.price)+'</span><a class="btn btn-soft btn-sm" th:href="@{/user/food-services}">Order</a></div></div></div>';
+    }).join('');
+
+    /* ---------- dining ---------- */
+    var foods=App.getFood().filter(function(f){return f.available!==false;}).map(function(f){
+      if(String(f.name||'').trim().toLowerCase()==='full english deluxe'){
+        f.name='Coastal Seafood Platter';
+        f.cat='Chef\'s special';
+        f.img='https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=720&q=80';
+      }
+      return f;
+    }).slice(0,4);
+    var fg=document.getElementById('foodGrid');
+    if(!foods.length) fg.innerHTML=App.emptyState('utensils','Menu preview','Add dishes from Food &amp; Services management.');
+    else fg.innerHTML=foods.map(function(f){
+      return '<div class="hf-card reveal"><img src="'+f.img+'" alt="'+App.esc(f.name)+'" loading="lazy" onerror="this.style.background=\'#0d3a36\'"><div class="hf-body"><div class="text-xs strong" style="color:var(--accent);text-transform:uppercase;letter-spacing:.08em">'+App.esc(f.cat)+'</div><div class="strong" style="font-size:.95rem">'+App.esc(f.name)+'</div><div class="row between mt-1"><span class="strong" style="color:var(--primary)">'+App.money(f.price)+'</span><span class="badge b-primary">On menu</span></div></div></div>';
+    }).join('');
+
+    /* ---------- gallery + lightbox ---------- */
+    var gal=document.getElementById('galGrid');
+    var gals=App.getGallery().slice(0,8);
+    gal.innerHTML=gals.map(function(g,i){
+      return '<div class="gal-item reveal '+(i===0?'tall':'')+'" data-gal="'+i+'" role="button" tabindex="0"><img src="'+g.img+'" alt="'+App.esc(g.title)+'" loading="lazy"><div class="cap"><span data-icon="image"></span>'+App.esc(g.title)+'</div></div>';
+    }).join('');
+    var lb=null, state=0;
+    function openLB(idx){
+      var items=App.getGallery();
+      state=(idx+items.length)%items.length;
+      if(!lb){
+        lb=document.createElement('div'); lb.className='lightbox';
+        lb.innerHTML='<button class="lb-close" aria-label="Close">&times;</button><button class="nav prev" aria-label="Previous">&lsaquo;</button><button class="nav next" aria-label="Next">&rsaquo;</button><img alt=""><div class="cap"></div><div class="lb-count"></div>';
+        document.body.appendChild(lb);
+        lb.querySelector('.lb-close').addEventListener('click',function(){lb.classList.remove('open');});
+        lb.querySelector('.prev').addEventListener('click',function(){openLB(state-1);});
+        lb.querySelector('.next').addEventListener('click',function(){openLB(state+1);});
+        lb.addEventListener('click',function(e){ if(e.target===lb) lb.classList.remove('open'); });
+        document.addEventListener('keydown',function(e){ if(!lb.classList.contains('open'))return; if(e.key==='Escape')lb.classList.remove('open'); if(e.key==='ArrowRight')openLB(state+1); if(e.key==='ArrowLeft')openLB(state-1); });
+      }
+      var it=items[state];
+      lb.querySelector('img').src=it.img; lb.querySelector('.cap').textContent=it.title;
+      lb.querySelector('.lb-count').textContent=(state+1)+' / '+items.length;
+      lb.classList.add('open');
+    }
+    gal.addEventListener('click',function(e){ var it=e.target.closest('[data-gal]'); if(it) openLB(+it.dataset.gal); });
+
+    /* ---------- reviews carousel ---------- */
+    var revs=[
+      {name:'Olivia Bennett',from:'London, UK',stars:5,text:'The most relaxing five days of the year. Service was attentive without ever feeling intrusive. The sea-view suite at sunrise is unforgettable.'},
+      {name:'Rahul Nair',from:'Mumbai, India',stars:5,text:'Sea-view suite, rooftop breakfast, flawless WiFi in every corner. We extended our stay twice — the staff made it effortless.'},
+      {name:'Marina Kostova',from:'Sofia',stars:4,text:'Beautiful property and wonderful staff. The spa and infinity pool are world class. Book the sunset dinner, you won\'t regret it.'},
+      {name:'Thomas Adler',from:'Berlin',stars:5,text:'Booked online in minutes, arrived to a seamless check-in. Easily our new family tradition — the kids never want to leave.'},
+      {name:'Aisha Rahman',from:'Dhaka',stars:5,text:'From the welcome drink to the farewell gift, every detail felt considered. The most thoughtful hospitality we have experienced.'}
+    ];
+    var track=document.getElementById('revTrack');
+    track.innerHTML=revs.map(function(r){
+      return '<div class="rev-card"><div class="q">&ldquo;</div><p>'+App.esc(r.text)+'</p>'+
+              '<div class="stars">'+App.stars(r.stars)+'</div>'+
+              '<div class="row" style="gap:.6rem;align-items:center">'+App.avatarHTML({name:r.name,role:'GUEST'},'avatar sm')+'<div><div class="strong" style="font-size:.85rem">'+r.name+'</div><div class="text-xs" style="color:var(--muted)">'+r.from+'</div></div></div></div>';
+    }).join('');
+    var per=window.innerWidth>=1060?3:(window.innerWidth>=720?2:1);
+    var idx=0, max=Math.max(0,revs.length-per), timer=null;
+    function dots(){ var d=document.getElementById('revDots'); if(!d)return; var h=''; for(var i=0;i<=max;i++){ h+='<i class="'+(i===idx?'on':'')+'" data-dot="'+i+'"></i>'; } d.innerHTML=h; d.querySelectorAll('[data-dot]').forEach(function(el){ el.addEventListener('click',function(){ idx=+el.dataset.dot; go(); restart(); }); }); }
+    function go(){ track.style.transform='translateX(-'+(idx*(100/per))+'%)'; dots(); }
+    function restart(){ clearTimeout(timer); timer=setTimeout(function(){ idx=(idx+1>max)?0:idx+1; go(); restart(); },5500); }
+    document.getElementById('revPrev').addEventListener('click',function(){ idx=(idx-1<0)?max:idx-1; go(); restart(); });
+    document.getElementById('revNext').addEventListener('click',function(){ idx=(idx+1>max)?0:idx+1; go(); restart(); });
+    window.addEventListener('resize',App.debounce(function(){ per=window.innerWidth>=1060?3:(window.innerWidth>=720?2:1); max=Math.max(0,revs.length-per); idx=Math.min(idx,max); go(); },200));
+    go(); restart();
+
+    /* ---------- location / contact ---------- */
+    var cards=document.getElementById('contactCards');
+    var contact=[
+      {i:'phone',t:'Call us',v:C.phone||'',href:C.phone?'tel:'+C.phone:null},
+      {i:'mail',t:'Email',v:C.email||'',href:C.email?'mailto:'+C.email:null},
+      {i:'pin',t:'Find us',v:C.address||'',href:C.address?'/contact':null},
+      {i:'clock',t:'Front desk',v:C.supportHours||'',href:null}
+    ].filter(function(item){return item.v.trim()!=='';});
+    if(cards){
+      cards.innerHTML=contact.map(function(c2){
+        var inner='<div class="ico '+(c2.i==='phone'||c2.i==='mail'?'ico-primary':'ico-accent')+'"><span data-icon="'+c2.i+'"></span></div><div><div class="k">'+c2.t+'</div><div class="v">'+App.esc(c2.v)+'</div></div>';
+        return c2.href?'<a class="info-card" href="'+App.esc(c2.href)+'" style="text-decoration:none;color:inherit">'+inner+'</a>':'<div class="info-card">'+inner+'</div>';
+      }).join('');
+      App.hydrateIcons(cards);
+      cards.style.display=contact.length?'':'none';
+    }
+    var addr=document.getElementById('mapAddr'); if(addr){ addr.textContent=C.address||''; addr.style.display=C.address?'':'none'; }
+    var mb=document.getElementById('mapBtn');
+    if(mb){ if(C.latitude&&C.longitude){mb.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(C.latitude+','+C.longitude);mb.style.display='';}else if(C.address){mb.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(C.address);mb.style.display='';}else{mb.removeAttribute('href');mb.style.display='none';} }
+
+    /* ---------- footer ---------- */
+    var yearEl=document.getElementById('footYear'); if(yearEl) yearEl.textContent=new Date().getFullYear();
+    var fb2=document.querySelector('[data-foot-brand]'); if(fb2&&C.hotelName) fb2.textContent=C.hotelName;
+    var fa=document.getElementById('footAbout'); if(fa){ fa.textContent=C.footerAbout||''; fa.style.display=C.footerAbout?'':'none'; }
+    var fp=document.getElementById('footPhone'), fe=document.getElementById('footEmail');
+    if(fp){ fp.textContent=C.phone||''; fp.href=C.phone?'tel:'+C.phone:'#'; fp.parentElement.style.display=C.phone?'':'none'; }
+    if(fe){ fe.textContent=C.email||''; fe.href=C.email?'mailto:'+C.email:'#'; fe.parentElement.style.display=C.email?'':'none'; }
+    var fh=document.getElementById('footHours'); if(fh){ fh.textContent=C.supportHours||''; fh.parentElement.style.display=C.supportHours?'':'none'; }
+    var faddr=document.getElementById('footAddr'); if(faddr){ faddr.textContent=C.address||''; faddr.parentElement.style.display=C.address?'':'none'; }
+    var socials={facebook:C.facebookUrl||'',instagram:C.instagramUrl||'',twitter:C.twitterUrl||'',youtube:C.youtubeUrl||''};
+    var socialList=document.getElementById('footSocials');
+    function socialBrandIcon(name){
+      if(name==='facebook') return '<svg class="footer-social-brand" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-3.3 0-5 2-5 5v3H6v4h3v4h4v-4h3.2l.8-4H13V9c0-.7.3-1 1-1Z"/></svg>';
+      if(name==='instagram') return '<svg class="footer-social-brand" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.2"/></svg>';
+      if(name==='x') return '<svg class="footer-social-brand" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4.2l3.1 4.4L16 4h3l-5.3 6.1L20 20h-4.2l-3.7-5.2L7.5 20h-3l5.7-6.7L5 4Zm3.5 2 7.8 12h1.8L10.3 6H8.5Z"/></svg>';
+      return '<svg class="footer-social-brand" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8.2a3 3 0 0 0-2.1-2.1C17 5.6 12 5.6 12 5.6s-5 0-6.9.5A3 3 0 0 0 3 8.2 31 31 0 0 0 2.5 12c0 1.3.2 2.6.5 3.8a3 3 0 0 0 2.1 2.1c1.9.5 6.9.5 6.9.5s5 0 6.9-.5a3 3 0 0 0 2.1-2.1c.3-1.2.5-2.5.5-3.8s-.2-2.6-.5-3.8ZM10 15.5v-7l6 3.5-6 3.5Z"/></svg>';
+    }
+
+    if(socialList){
+      var sLinks=[
+        ['facebook','Facebook',socials.facebook],
+        ['instagram','Instagram',socials.instagram],
+        ['x','X',socials.twitter],
+        ['youtube','YouTube',socials.youtube]
+      ].filter(function(s3){return s3[2]&&s3[2].trim()!=='';});
+
+      socialList.innerHTML=sLinks.map(function(s3){
+        return '<a href="'+App.esc(s3[2])+'" title="'+s3[1]+'" target="_blank" rel="noopener noreferrer">'
+                +socialBrandIcon(s3[0])+'</a>';
+      }).join('');
+      socialList.style.display=sLinks.length?'':'none';
+    }
+
+    /* ---------- newsletter validation ---------- */
+    var nf=document.getElementById('newsForm'), ne=document.getElementById('newsEmail');
+    var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    nf.addEventListener('submit',function(e){
+      e.preventDefault();
+      if(!ne.value||!emailRe.test(ne.value)){ ne.classList.add('invalid'); App.toast('Please enter a valid email address.','warning'); return; }
+      ne.classList.remove('invalid');
+      App.toast('You\'re subscribed! Watch your inbox for offers.','success');
+      ne.value='';
+    });
+    ne.addEventListener('input',function(){ ne.classList.remove('invalid'); });
+
+    /* ---------- hydrate all icons created by JavaScript ---------- */
+    App.hydrateIcons(document);
+
+    /* ---------- scroll reveal ---------- */
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add('in'); obs.unobserve(en.target); }
+      });
+    },{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+    document.querySelectorAll('.reveal:not(.in)').forEach(function(el){ obs.observe(el); });
+  })();
+</script>
+</body>
+</html>
+
+
+

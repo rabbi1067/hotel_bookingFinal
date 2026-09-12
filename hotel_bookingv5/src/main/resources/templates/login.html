@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Sign in | Grand Meridian Resort</title>
+  <style>
+    .auth-page{min-height:100vh}
+    .demo-note{display:flex;align-items:center;gap:.45rem;font-size:.75rem;color:var(--muted);margin-top:.5rem}
+    .auth-error{margin-bottom:1rem}
+
+    body[data-active="login"] .bar-actions a[href="/login"]{
+      color:var(--primary);
+      font-weight:700;
+    }
+
+    .auth-side{overflow:hidden}
+    .auth-side .content{
+      padding-bottom:clamp(1rem, 4vh, 2.5rem);
+      max-height:100%;
+      overflow:hidden;
+    }
+    .auth-side .quote{
+      font-size:clamp(1.1rem, 2.4vw, 1.6rem);
+      line-height:1.3;
+    }
+    .auth-side .mini{
+      font-size:clamp(.8rem, 1.3vw, .95rem);
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      margin-top:.5rem;
+    }
+    @media (max-height:760px){
+      .auth-side .quote{font-size:1.05rem}
+      .auth-side .mini{-webkit-line-clamp:1}
+    }
+    @media (max-height:600px){
+      .auth-side .content{padding-bottom:.75rem}
+      .auth-side .quote{font-size:.95rem}
+      .auth-side .mini{display:none}
+    }
+
+    .modal-overlay{position:fixed;inset:0;background:rgba(8,18,16,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:1000}
+    .modal-overlay[hidden]{display:none}
+    .modal-box{position:relative;width:100%;max-width:420px;max-height:90vh;overflow:auto}
+    .modal-x{position:absolute;top:.9rem;right:.9rem}
+
+    /* ---- demo login buttons ---- */
+    .demo-login{margin-bottom:1.2rem}
+    .demo-login-label{font-size:.75rem;color:var(--muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+    .demo-login-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+    .demo-login-btn{
+      border:1px solid var(--border, rgba(255,255,255,.12));
+      background:var(--surface-2, rgba(255,255,255,.04));
+      color:var(--text);
+      border-radius:10px;
+      padding:.55rem .6rem;
+      font-size:.78rem;
+      font-weight:600;
+      cursor:pointer;
+      text-align:left;
+      transition:.15s;
+    }
+    .demo-login-btn:hover{border-color:var(--primary);color:var(--primary)}
+    .demo-login-btn small{display:block;font-weight:400;opacity:.65;font-size:.7rem;margin-top:1px}
+  </style>
+</head>
+<body class="auth-page" th:attr="data-active=${activePage}">
+<nav class="site-bar" data-site-nav></nav>
+<div class="auth-wrap">
+  <div class="auth-side">
+    <img src="https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1100&q=70" alt="Grand Meridian Resort at dusk" onerror="this.style.display='none'">
+    <div class="veil"></div>
+    <div class="content">
+      <div class="quote">&ldquo;The sea, the sky, and a room that makes time stand still.&rdquo;</div>
+      <div class="mini">Sign in to manage your bookings, run dashboards or stay connected with Grand Meridian Resort.</div>
+    </div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-box">
+      <div class="as-head">
+        <a th:href="@{/}" class="logo" style="margin-bottom:1.4rem;display:inline-flex"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M20.2 2.8a6 6 0 0 0-8.5 0L5 9.5V19h9.5l6.7-6.7a6 6 0 0 0-1-9.5z"/><path d="M16 8 2 22M17.5 15H9"/></svg></span><span>Grand Meridian Resort<i class="brand-small" style="display:block;font-size:.6rem;font-weight:700;letter-spacing:.26em;color:var(--accent);font-family:var(--font);text-transform:uppercase;font-style:normal">Resort &amp; Spa</i></span></a>
+        <h1>Welcome back</h1>
+        <p class="as-sub">Log in with your email and password to continue.</p>
+      </div>
+
+      <div class="alert alert-danger auth-error" th:if="${param.error}" role="alert">
+        Invalid email or password. Please try again.
+      </div>
+      <div class="alert alert-success auth-error" th:if="${param.logout}" role="alert">
+        You have been signed out successfully.
+      </div>
+      <div class="alert alert-success auth-error" th:if="${param.registered}" role="alert">
+        Registration successful! Please sign in.
+      </div>
+      <div class="alert alert-success auth-error" th:if="${param.resetSuccess}" role="alert">
+        Password updated successfully. Please sign in with your new password.
+      </div>
+
+      <!-- ===== Quick demo login ===== -->
+      <div class="demo-login">
+        <div class="demo-login-label">Quick demo login</div>
+        <div class="demo-login-grid">
+          <button type="button" class="demo-login-btn" data-demo-email="superadmin@hotel.com" data-demo-pass="Super123">
+            Super Admin<small>superadmin@hotel.com</small>
+          </button>
+          <button type="button" class="demo-login-btn" data-demo-email="aa@gmail.com" data-demo-pass="123456">
+            Admin<small>aa@gmail.com</small>
+          </button>
+          <button type="button" class="demo-login-btn" data-demo-email="s@gmail.com" data-demo-pass="123456">
+            Staff<small>s@gmail.com</small>
+          </button>
+          <button type="button" class="demo-login-btn" data-demo-email="g@gmail.com" data-demo-pass="123456">
+            Guest<small>g@gmail.com</small>
+          </button>
+        </div>
+      </div>
+
+      <form th:action="@{/login}" method="post" novalidate>
+        <div class="field">
+          <label for="email">Email address</label>
+          <div class="input-affix"><span data-icon="mail"></span><input class="input" type="email" id="email" name="email" placeholder="you@hotel.com" autocomplete="email" required></div>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-affix right pass-row"><span data-icon="lock"></span>
+            <input class="input" type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+            <button class="eye" type="button" data-eye aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-sm"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="row between" style="margin-bottom:1rem">
+          <label class="check"><input type="checkbox" id="remember" name="remember-me"> Remember me</label>
+          <a href="#" class="text-sm" data-fp-open>Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="submitBtn">Sign in</button>
+      </form>
+
+      <p class="auth-foot">Don&rsquo;t have an account? <a th:href="@{/register}">Create one</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Forgot password modal (email -> OTP -> new password) ===== -->
+<div class="modal-overlay" id="fpOverlay" hidden>
+  <div class="modal-box card card-pad" role="dialog" aria-modal="true" aria-labelledby="fpTitle">
+    <button type="button" class="icon-btn modal-x" data-fp-close aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-sm"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+
+    <!-- Step 1: email -->
+    <div id="fpStepRequest">
+      <div class="mb-3">
+        <h2 id="fpTitle" style="font-family:var(--display);font-size:1.3rem">Forgot password?</h2>
+        <p class="text-sm" style="color:var(--muted);margin-top:.3rem">Enter your account email and we'll send a 6-digit code.</p>
+      </div>
+      <form id="fpForm" novalidate>
+        <div class="field">
+          <label for="fpEmail">Email address</label>
+          <div class="input-affix"><span data-icon="mail"></span><input class="input" type="email" id="fpEmail" name="email" placeholder="you@example.com" autocomplete="email" required></div>
+          <div class="err">Enter a valid email address.</div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="fpBtn"><span class="spin"></span><span class="lbl">Send code</span></button>
+      </form>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="fpStepOtp" hidden>
+      <div class="mb-3">
+        <h2 style="font-family:var(--display);font-size:1.3rem">Enter the code</h2>
+        <p class="text-sm" style="color:var(--muted);margin-top:.3rem">We emailed a 6-digit code to <b id="fpOtpEmailLabel"></b>. It expires in 10 minutes.</p>
+      </div>
+      <form id="fpOtpForm" novalidate>
+        <div class="field">
+          <label for="fpOtp">Verification code</label>
+          <input class="input" type="text" id="fpOtp" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+          <div class="err">Enter the 6-digit code.</div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="fpOtpBtn"><span class="spin"></span><span class="lbl">Verify code</span></button>
+      </form>
+      <p class="auth-foot"><a href="#" id="fpResend">Resend code</a> &nbsp;&middot;&nbsp; <a href="#" id="fpBackToEmail">Change email</a></p>
+    </div>
+
+    <!-- Step 3: new password -->
+    <div id="fpStepNewPass" hidden>
+      <div class="mb-3">
+        <h2 style="font-family:var(--display);font-size:1.3rem">Choose a new password</h2>
+        <p class="text-sm" style="color:var(--muted);margin-top:.3rem">Set a fresh password for your account.</p>
+      </div>
+      <form id="fpNewPassForm" novalidate>
+        <div class="field">
+          <label for="fpPass1">New password</label>
+          <div class="input-affix right pass-row"><span data-icon="lock"></span><input class="input" type="password" id="fpPass1" placeholder="Min 6 characters" autocomplete="new-password" required></div>
+          <div class="err">Password must be at least 6 characters.</div>
+        </div>
+        <div class="field">
+          <label for="fpPass2">Confirm new password</label>
+          <div class="input-affix right pass-row"><span data-icon="lock"></span><input class="input" type="password" id="fpPass2" placeholder="Repeat new password" autocomplete="new-password" required></div>
+          <div class="err">Passwords do not match.</div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="fpNewPassBtn"><span class="spin"></span><span class="lbl">Update password</span></button>
+      </form>
+    </div>
+
+    <!-- Step 4: done -->
+    <div id="fpStepDone" hidden>
+      <div class="row" style="flex-direction:column;text-align:center;gap:1rem;padding:.5rem 0 0">
+        <div class="kpi none" style="width:64px;height:64px"><div class="ico ico-success" style="width:100%;height:100%"><span data-icon="checkCircle" class="icon-lg"></span></div></div>
+        <h2 style="font-family:var(--display);font-size:1.2rem">Password updated</h2>
+        <p class="text-sm" style="color:var(--muted)" id="fpDoneMsg">You can now sign in with your new password.</p>
+        <button class="btn btn-primary btn-lg btn-block" type="button" data-fp-close>Back to sign in</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+  App.boot({guard:'guest'});
+  document.querySelector('[data-eye]').addEventListener('click',function(e){
+    e.preventDefault();
+    var pass=document.getElementById('password');
+    var visible=pass.type==='text';
+    pass.type=visible?'password':'text';
+    this.innerHTML=visible?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-sm"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon-sm"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  });
+
+  /* ---- quick demo login buttons ---- */
+  document.querySelectorAll('.demo-login-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.getElementById('email').value = this.getAttribute('data-demo-email');
+      document.getElementById('password').value = this.getAttribute('data-demo-pass');
+    });
+  });
+
+  /* ---- forgot password modal (email -> OTP -> new password) ---- */
+  (function(){
+    var overlay=document.getElementById('fpOverlay');
+    var openLink=document.querySelector('[data-fp-open]');
+
+    var stepRequest=document.getElementById('fpStepRequest');
+    var stepOtp=document.getElementById('fpStepOtp');
+    var stepNewPass=document.getElementById('fpStepNewPass');
+    var stepDone=document.getElementById('fpStepDone');
+
+    var form=document.getElementById('fpForm');
+    var emailInput=document.getElementById('fpEmail');
+    var btn=document.getElementById('fpBtn');
+
+    var otpForm=document.getElementById('fpOtpForm');
+    var otpInput=document.getElementById('fpOtp');
+    var otpEmailLabel=document.getElementById('fpOtpEmailLabel');
+    var otpBtn=document.getElementById('fpOtpBtn');
+    var resendLink=document.getElementById('fpResend');
+    var backToEmailLink=document.getElementById('fpBackToEmail');
+
+    var newPassForm=document.getElementById('fpNewPassForm');
+    var pass1=document.getElementById('fpPass1');
+    var pass2=document.getElementById('fpPass2');
+    var newPassBtn=document.getElementById('fpNewPassBtn');
+
+    var currentEmail='';
+    var currentOtp='';
+
+    function showStep(step){
+      stepRequest.hidden=(step!=='request');
+      stepOtp.hidden=(step!=='otp');
+      stepNewPass.hidden=(step!=='newpass');
+      stepDone.hidden=(step!=='done');
+    }
+
+    function openModal(){
+      showStep('request');
+      form.reset(); App.clearErrors(form);
+      overlay.hidden=false;
+      setTimeout(function(){ emailInput.focus(); },0);
+    }
+    function closeModal(){ overlay.hidden=true; }
+
+    openLink.addEventListener('click',function(e){ e.preventDefault(); openModal(); });
+    overlay.addEventListener('click',function(e){ if(e.target===overlay) closeModal(); });
+    document.querySelectorAll('[data-fp-close]').forEach(function(b){ b.addEventListener('click',closeModal); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape' && !overlay.hidden) closeModal(); });
+
+    function sendOtp(email){
+      return fetch('/api/forgot-password',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'email='+encodeURIComponent(email)
+      }).then(function(r){
+        if(!r.ok) throw new Error('Request failed');
+        return r.json();
+      });
+    }
+
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      App.clearErrors(form);
+      var ok=App.fieldErrors([{id:'fpEmail',req:true,pattern:/^[^@\s]+@[^@\s]+\.[^@\s]+$/}]);
+      if(!ok){ App.toast('Enter a valid email.','warning'); return; }
+
+      btn.classList.add('loading'); btn.disabled=true;
+      currentEmail=emailInput.value;
+
+      sendOtp(currentEmail).then(function(){
+        btn.classList.remove('loading'); btn.disabled=false;
+        otpEmailLabel.textContent=currentEmail;
+        otpInput.value='';
+        showStep('otp');
+        setTimeout(function(){ otpInput.focus(); },0);
+      }).catch(function(){
+        btn.classList.remove('loading'); btn.disabled=false;
+        App.toast('Something went wrong. Please try again.','danger');
+      });
+    });
+
+    backToEmailLink.addEventListener('click',function(e){ e.preventDefault(); showStep('request'); });
+
+    resendLink.addEventListener('click',function(e){
+      e.preventDefault();
+      if(!currentEmail) return;
+      App.toast('Sending a new code…','info');
+      sendOtp(currentEmail).then(function(){
+        App.toast('A new code has been sent.','success');
+      }).catch(function(){
+        App.toast('Could not resend the code. Please try again.','danger');
+      });
+    });
+
+    otpForm.addEventListener('submit',function(e){
+      e.preventDefault();
+      var otp=otpInput.value.trim();
+      if(!/^\d{6}$/.test(otp)){ App.toast('Enter the 6-digit code.','warning'); return; }
+
+      otpBtn.classList.add('loading'); otpBtn.disabled=true;
+
+      fetch('/api/verify-otp',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'email='+encodeURIComponent(currentEmail)+'&otp='+encodeURIComponent(otp)
+      }).then(function(r){ return r.json(); })
+              .then(function(data){
+                otpBtn.classList.remove('loading'); otpBtn.disabled=false;
+                if(data.valid){
+                  currentOtp=otp;
+                  pass1.value=''; pass2.value='';
+                  showStep('newpass');
+                  setTimeout(function(){ pass1.focus(); },0);
+                }else{
+                  App.toast('Invalid or expired code. Please try again.','danger');
+                }
+              }).catch(function(){
+        otpBtn.classList.remove('loading'); otpBtn.disabled=false;
+        App.toast('Something went wrong. Please try again.','danger');
+      });
+    });
+
+    newPassForm.addEventListener('submit',function(e){
+      e.preventDefault();
+      if(pass1.value.length<6){ App.toast('Password must be at least 6 characters.','warning'); return; }
+      if(pass1.value!==pass2.value){ App.toast('Passwords do not match.','warning'); return; }
+
+      newPassBtn.classList.add('loading'); newPassBtn.disabled=true;
+
+      fetch('/api/reset-password',{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'email='+encodeURIComponent(currentEmail)+'&otp='+encodeURIComponent(currentOtp)+'&newPassword='+encodeURIComponent(pass1.value)
+      }).then(function(r){ return r.json(); })
+              .then(function(data){
+                newPassBtn.classList.remove('loading'); newPassBtn.disabled=false;
+                if(data.ok){
+                  showStep('done');
+                }else{
+                  App.toast(data.message || 'Could not update password.','danger');
+                }
+              }).catch(function(){
+        newPassBtn.classList.remove('loading'); newPassBtn.disabled=false;
+        App.toast('Something went wrong. Please try again.','danger');
+      });
+    });
+  })();
+</script>
+</body>
+
+</html>

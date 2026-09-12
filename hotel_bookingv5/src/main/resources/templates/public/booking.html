@@ -1,0 +1,319 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Complete your booking | Grand Meridian Resort</title>
+  <style>
+    .wiz-layout{display:grid;grid-template-columns:1fr 380px;gap:1.6rem;align-items:start}
+    .sum-sticky{position:sticky;top:calc(var(--topbar-h) + 18px)}
+    .svc-opt{display:flex;align-items:center;gap:.8rem;border:1px solid var(--border);border-radius:11px;padding:.75rem .95rem;cursor:pointer;transition:.14s;background:var(--surface-2)}
+    .svc-opt.selected{border-color:var(--primary);background:var(--primary-soft)}
+    .svc-opt input{accent-color:var(--primary);width:17px;height:17px;flex:none}
+    .svc-opt .so-name{font-weight:600;font-size:.88rem}
+    .svc-opt .so-sub{font-size:.74rem;color:var(--muted)}
+    .svc-opt .so-price{margin-left:auto;font-weight:700;white-space:nowrap}
+    .wiz-nav{display:flex;justify-content:space-between;gap:1rem;margin-top:1.2rem}
+    @media (max-width:1100px){.wiz-layout{grid-template-columns:1fr}.sum-sticky{position:static}}
+    .pay-sel{display:flex;gap:.5rem}
+    .pay-sel button{flex:1;border:1px solid var(--border-strong);background:var(--surface);border-radius:11px;padding:.9rem .5rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.3rem;font-weight:650;font-size:.85rem;color:var(--muted);font-family:var(--font)}
+    .pay-sel button .bic{width:20px;height:20px}
+    .pay-sel button.active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ub">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="page-head">
+        <div class="breadcrumb"><a th:href="@{/}">Home</a><span class="sep">/</span><a th:href="@{/rooms}">Rooms</a><span class="sep">/</span><span class="cur">Book your stay</span></div>
+      </div>
+
+      <div class="steps mb-4" id="stepsBar"></div>
+
+      <div class="wiz-layout">
+        <div class="card" id="wizCard">
+          <div class="card-head" id="stepTitle"><h3>Stay details</h3></div>
+          <div class="card-body" id="stepBody"></div>
+          <div class="card-body" style="padding-top:0">
+            <div class="wiz-nav">
+              <button class="btn btn-ghost" id="wPrev">Back</button>
+              <button class="btn btn-primary btn-lg" id="wNext">Continue</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="sum-sticky">
+          <div class="card card-pad">
+            <h3 style="font-size:1rem;margin-bottom:.8rem">Booking summary</h3>
+            <div class="row mb-3" style="gap:.7rem">
+              <img src="" id="sumRoomImg" style="width:64px;height:52px;object-fit:cover;border-radius:9px">
+              <div><div class="strong" id="sumRoomName" style="font-size:.92rem"></div><div class="text-xs" style="color:var(--muted)" id="sumRoomMeta"></div></div>
+            </div>
+            <div id="sumRows"></div>
+            <div class="sum-total"><span class="k">Total</span><span class="v" id="sumTotal">$0</span></div>
+            <p class="legal mt-2" style="text-align:center">Free cancellation until 48h before check-in.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:inline="javascript">
+  /*[# th:if="${bookingError} != null"]*/
+  window.__BOOKING_FLASH_ERROR__ = '[[${bookingError}]]';
+  /*[/]*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'auth'});
+  App.renderDashChrome(App.getCurrentUser().role==='GUEST'?'ub':'ab','Booking',[{label:'Home',href:'/'},{label:'Rooms',href:'/rooms'},{label:'Booking',href:'#'}]);
+  (function(){
+    if(window.__BOOKING_FLASH_ERROR__){ App.toast(window.__BOOKING_FLASH_ERROR__,'error'); }
+    var p=new URLSearchParams(location.search);
+    var roomId=p.get('room')||'r1';
+    var room=App.roomById(roomId);
+    if(!room){ document.getElementById('stepBody').innerHTML=App.emptyState('x','Room unavailable','Please choose a room first.','<a class="btn btn-primary btn-sm" th:href="@{/rooms}">Browse rooms</a>'); document.getElementById('wNext').style.display='none'; document.getElementById('wPrev').style.display='none'; return; }
+    var cu=App.getCurrentUser();
+    var cinT=new Date(); cinT.setDate(cinT.getDate()+ (p.get('checkin')?0:1));
+    var S={
+      roomId:room.id,
+      checkin:p.get('checkin')||App.fmtDateISO(cinT),
+      checkout:p.get('checkout')||App.fmtDateISO(new Date(cinT.getTime()+3*86400000)),
+      adults:+p.get('adults')||2,
+      children:+p.get('children')||0,
+      pets:p.get('pets')==='1',
+      roomsQty:1
+    };
+    var SERVICES=[
+      {id:'breakfast',name:'Breakfast daily',sub:'Full continental spread each morning',price:18,perNight:true},
+      {id:'airport',name:'Airport pickup',sub:'Private chauffeured transfer',price:35,perNight:false},
+      {id:'extraBed',name:'Extra bed',sub:'Premium rollaway with linens',price:25,perNight:true},
+      {id:'roomService',name:'Room service',sub:'In-room dining setup',price:10,perNight:false},
+      {id:'spa',name:'Spa session',sub:'60-min aromatherapy massage',price:45,perNight:false},
+      {id:'laundry',name:'Laundry express',sub:'Same-day wash & press',price:12,perNight:false}
+    ];
+    var GUEST={title:cu.name,email:cu.email,phone:cu.phone||'',address:cu.address||'',request:''};
+    var PAY='unpaid';
+    var PROMO={code:null,ok:false,discount:0,msg:''};
+    var step=1, total=4;
+    var cur=App.getCurrentUser();
+
+    var steps=['Stay details','Services &amp; promo','Guest information','Confirm &amp; pay'];
+    function stepsBar(){
+      var s='';
+      steps.forEach(function(t,i){
+        var n=i+1;
+        var cls = step===n?'active':(step>n?'done':'');
+        s+='<div class="step '+cls+'"><span class="num">'+(step>n?App.icon('check','icon-sm'):n)+'</span><span>'+t+'</span></div>';
+        if(n<total)s+='<span class="step ln" style="height:2px;background:var(--border);width:38px"></span>';
+      });
+      document.getElementById('stepsBar').innerHTML=s;
+    }
+    function calc(showMsg){
+      var n=App.nights(S.checkin,S.checkout);
+      var svc=selServices().reduce(function(a,x){ return a+ (x.perNight? x.price*n : x.price); },0);
+      var pc=App.priceBreakdown(room,S.checkin,S.checkout,S.roomsQty,svc,PROMO.ok?PROMO.code:null);
+      pc.svc=svc;
+      return pc;
+    }
+    function selServices(){ return SERVICES.filter(function(s){ var el=document.getElementById('svc-'+s.id); return el&&el.checked; }); }
+    function refreshSummary(noToast){
+      var pc=calc();
+      var n=pc.nights;
+      document.getElementById('sumRoomName').textContent=room.name;
+      document.getElementById('sumRoomMeta').textContent=room.type+' &bull; '+App.money(room.price)+'/night';
+      document.getElementById('sumRoomImg').src=room.images[0];
+      var rows='';
+      rows+='<div class="sum-row"><span class="k">'+n+' night'+(n>1?'s':'')+' &times; '+App.money(pc.nightly)+'</span><span class="v">'+App.money(pc.roomTotal)+'</span></div>';
+      rows+='<div class="sum-row"><span class="k">Check-in</span><span class="v">'+App.fmtDate(S.checkin)+'</span></div>';
+      rows+='<div class="sum-row"><span class="k">Check-out</span><span class="v">'+App.fmtDate(S.checkout)+'</span></div>';
+      rows+='<div class="sum-row"><span class="k">Guests</span><span class="v">'+S.adults+' adult'+(S.adults>1?'s':'')+(S.children?' + '+S.children+' child':'')+'</span></div>';
+      if(S.pets)rows+='<div class="sum-row"><span class="k">Pets</span><span class="v">Yes</span></div>';
+      if(room.discount)rows+='<div class="sum-row" style="color:var(--success)"><span class="k">Room discount ('+room.discount+'%)</span><span class="v">&minus; '+App.money(Math.round(pc.roomTotal*room.discount/(100-room.discount||1)))+'</span></div>';
+      if(pc.svc)rows+='<div class="sum-row"><span class="k">Services</span><span class="v">'+App.money(pc.svc)+'</span></div>';
+      if(pc.promo.ok&&pc.promo.discount)rows+='<div class="sum-row" style="color:var(--success)"><span class="k">Promo '+App.esc(pc.promo.code)+'</span><span class="v">&minus; '+App.money(pc.promo.discount)+'</span></div>';
+      rows+='<div class="sum-row"><span class="k">Taxes &amp; fees</span><span class="v">'+App.money(pc.tax)+'</span></div>';
+      document.getElementById('sumRows').innerHTML=rows;
+      document.getElementById('sumTotal').textContent=App.money(pc.total);
+      return pc;
+    }
+    function nightsLabel(){ var n=App.nights(S.checkin,S.checkout); return n+' night'+(n>1?'s':''); }
+
+    function step1(){
+      document.getElementById('stepTitle').innerHTML='<h3>Stay details</h3>';
+      document.getElementById('stepBody').innerHTML=
+              '<div class="row mb-3" style="gap:1rem;flex-wrap:wrap"><img src="'+room.images[0]+'" style="width:150px;height:110px;border-radius:12px;object-fit:cover"><div class="grow">'+
+              '<div class="rc-type" style="color:var(--accent);font-weight:700;font-size:.73rem;letter-spacing:.1em;text-transform:uppercase">'+room.type+'</div>'+
+              '<h2 style="font-family:var(--display);margin:.15rem 0">'+room.name+'</h2>'+
+              '<div class="rc-rate"><span class="stars">'+App.stars(room.rating)+'</span><b>'+room.rating+'</b> <span class="text-sm text-muted">('+room.reviews+' reviews)</span></div></div>'+
+              '<div style="text-align:right"><div class="text-lg strong">'+App.money(room.price-(room.price*(room.discount||0)/100))+'</div><div class="text-sm text-muted">per night</div>'+(room.discount?'<span class="badge b-discount">'+room.discount+'% OFF</span>':'')+'</div></div>'+
+              '<div class="grid" style="grid-template-columns:1fr 1fr 1fr">'+
+              '<div class="field"><label>Check-in</label><input class="input" type="date" id="ci" value="'+S.checkin+'" min="'+App.todayISO()+'"></div>'+
+              '<div class="field"><label>Check-out</label><input class="input" type="date" id="co" value="'+S.checkout+'"></div>'+
+              '<div class="field"><label>Rooms</label><select class="input" id="rq"><option value="1" '+(S.roomsQty===1?'selected':'')+'>1 room</option><option value="2" '+(S.roomsQty===2?'selected':'')+'>2 rooms</option><option value="3" '+(S.roomsQty===3?'selected':'')+'>3 rooms</option></select></div>'+
+              '<div class="field"><label>Adults</label><select class="input" id="ad"><option>1</option><option '+(S.adults===2?'selected':'')+'>2</option><option '+(S.adults===3?'selected':'')+'>3</option><option '+(S.adults===4?'selected':'')+'>4</option></select></div>'+
+              '<div class="field"><label>Children</label><select class="input" id="ch"><option>0</option><option '+(S.children===1?'selected':'')+'>1</option><option '+(S.children===2?'selected':'')+'>2</option><option '+(S.children===3?'selected':'')+'>3</option></select></div>'+
+              '<div class="field"><label>Pets</label><select class="input" id="pt"><option value="no"'+(S.pets?'':' selected')+'>No pets</option><option value="yes"'+(S.pets?' selected':'')+'>Traveling with pets</option></select></div>'+
+              '</div><div id="dateWarn"></div>';
+      bind('ci','change',function(){ S.checkin=this.value; syncDates(); step1(); refreshSummary(); });
+      bind('co','change',function(){ S.checkout=this.value; syncDates(); step1(); refreshSummary(); });
+      bind('rq','change',function(){ S.roomsQty=+this.value; refreshSummary(); });
+      bind('ad','change',function(){ S.adults=+this.value; refreshSummary(); });
+      bind('ch','change',function(){ S.children=+this.value; refreshSummary(); });
+      bind('pt','change',function(){ S.pets=this.value==='yes'; refreshSummary(); });
+      function syncDates(){
+        if(App.nights(S.checkin,S.checkout)<=0){ document.getElementById('dateWarn').innerHTML='<div class="promo-err">'+App.icon('alertCircle','icon-sm')+'Check-out must be after check-in.</div>'; }
+        else document.getElementById('dateWarn').innerHTML='';
+      }
+    }
+    function step2(){
+      document.getElementById('stepTitle').innerHTML='<h3>Additional services &amp; promo code</h3>';
+      document.getElementById('stepBody').innerHTML=
+              '<p class="text-sm mb-3" style="color:var(--muted)">Add optional extras to personalise your stay. Prices marked per night are charged for each night.</p>'+
+              '<div class="grid" style="grid-template-columns:1fr 1fr">'+SERVICES.map(function(s){
+                var n=App.nights(S.checkin,S.checkout);
+                var mycost=s.perNight?s.price*n:s.price;
+                return '<label class="svc-opt" id="svc-'+s.id+'-label"><input type="checkbox" id="svc-'+s.id+'" data-svc="'+s.id+'"><div><div class="so-name">'+s.name+'</div><div class="so-sub">'+s.sub+((s.perNight&&n>1)?' &bull; per night':'')+'</div></div><span class="so-price">'+App.money(mycost)+(s.perNight&&n>1?'<div class="text-xs" style="font-weight:500;color:var(--muted)">'+App.money(s.price)+'/night</div>':'')+'</span></label>';
+              }).join('')+'</div>'+
+              '<div class="promo-box mt-3"><div class="row" style="gap:.4rem;flex-wrap:wrap"><input class="input grow" id="promoIn" placeholder="Promo code" style="text-transform:uppercase;font-family:monospace"><button class="btn btn-soft btn-sm" id="promoGo">Apply</button></div><div id="promoRes"></div></div>';
+      $$('input[data-svc]').forEach(function(c){ c.addEventListener('change',function(){ refreshSummary(); }); });
+      bind('promoGo','click',applyPromo);
+      bind('promoIn','keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); applyPromo(); } });
+      if(PROMO.code) document.getElementById('promoIn').value=PROMO.code;
+      refreshSummaryWithPromo();
+    }
+    function refreshSummaryWithPromo(){ var pc=refreshSummary(); if(PROMO.ok) showPromoRes(true,pc.promo.msg,pc.promo.discount); }
+    function applyPromo(){
+      var inp=document.getElementById('promoIn');
+      if(!inp.value){ showPromoRes(false,'Enter a code to check it.'); return; }
+      var btn=document.getElementById('promoGo');
+      var subtotal=App.nights(S.checkin,S.checkout)*room.price;
+      if(btn){ btn.disabled=true; }
+      fetch('/api/promo-codes/validate?code='+encodeURIComponent(inp.value)+'&subtotal='+subtotal)
+              .then(function(r){ return r.json(); })
+              .then(function(pc){
+                if(pc.ok){ PROMO={code:pc.code,ok:true,discount:pc.discount,msg:pc.message}; showPromoRes(true,pc.message,pc.discount); }
+                else { PROMO={code:null,ok:false,discount:0,msg:pc.message}; showPromoRes(false,pc.message); }
+                refreshSummary();
+              })
+              .catch(function(){
+                PROMO={code:null,ok:false,discount:0,msg:'Could not check that code right now. Please try again.'};
+                showPromoRes(false,PROMO.msg);
+              })
+              .finally(function(){ if(btn){ btn.disabled=false; } });
+    }
+    function showPromoRes(ok,msg,saved){
+      var el=document.getElementById('promoRes');
+      el.innerHTML=ok?('<div class="promo-ok">'+App.icon('checkCircle','icon-sm')+App.esc(msg)+'</div>'):('<div class="promo-err">'+App.icon('alertCircle','icon-sm')+App.esc(msg)+'</div>');
+    }
+    function step3(){
+      document.getElementById('stepTitle').innerHTML='<h3>Guest information</h3>';
+      document.getElementById('stepBody').innerHTML=
+              '<div class="grid" style="grid-template-columns:1fr 1fr">'+
+              '<div class="field"><label>Full name</label><input class="input" id="gName" value="'+App.esc(GUEST.title)+'"><div class="err">Name is required.</div></div>'+
+              '<div class="field"><label>Email</label><input class="input" id="gEmail" type="email" value="'+App.esc(GUEST.email)+'"><div class="err">Enter a valid email.</div></div>'+
+              '<div class="field"><label>Phone</label><input class="input" id="gPhone" value="'+App.esc(GUEST.phone)+'"><div class="err">Enter a valid phone.</div></div>'+
+              '<div class="field"><label>Country</label><select class="input" id="gCountry"><option>Bangladesh</option><option>United States</option><option>United Kingdom</option><option>Singapore</option><option>Australia</option><option>Other</option></select></div>'+
+              '</div>'+
+              '<div class="field"><label>Address</label><textarea class="input" id="gAddr" rows="2">'+App.esc(GUEST.address)+'</textarea></div>'+
+              '<div class="field"><label>Special request <span class="text-muted" style="font-weight:400">(optional)</span></label><textarea class="input" id="gReq" rows="2" placeholder="e.g. Late arrival, high floor, extra pillows...">'+App.esc(GUEST.request)+'</textarea></div>'+
+              '<p class="legal">By continuing you agree to our cancellation policy and house rules.</p>';
+    }
+    function gatherGuest(){
+      var g=document.getElementById('gName'),e=document.getElementById('gEmail'),ph=document.getElementById('gPhone'),ad=document.getElementById('gAddr'),rq=document.getElementById('gReq');
+      GUEST={title:g.value,email:e.value,phone:ph.value,address:ad?ad.value:'',request:rq?rq.value:''};
+    }
+    function step4(){
+      var pc=refreshSummary();
+      document.getElementById('stepTitle').innerHTML='<h3>Confirm &amp; pay</h3>';
+      document.getElementById('stepBody').innerHTML=
+              '<div class="join-grid mb-3">'+
+              '<div class="join-cell"><div class="k">Guest</div><div class="v">'+App.esc(GUEST.title)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Room</div><div class="v">'+room.name+'</div></div>'+
+              '<div class="join-cell"><div class="k">Stay</div><div class="v">'+nightsLabel()+'</div></div>'+
+              '<div class="join-cell"><div class="k">Check-in</div><div class="v">'+App.fmtDate(S.checkin)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Check-out</div><div class="v">'+App.fmtDate(S.checkout)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Guests</div><div class="v">'+S.adults+' adult'+(S.adults>1?'s':'')+(S.children?' + '+S.children:'')+'</div></div>'+
+              '</div>'+
+              '<div class="sum-row" style="border-top:1px solid var(--border);padding-top:.7rem"><span class="k">Room ('+nightsLabel()+')</span><span class="v">'+App.money(pc.roomTotal)+'</span></div>'+
+              (pc.svc?'<div class="sum-row"><span class="k">Services</span><span class="v">+'+App.money(pc.svc)+'</span></div>':'')+
+              (room.discount?'<div class="sum-row" style="color:var(--success)"><span class="k">Discount</span><span class="v">&minus; '+App.money(Math.round(pc.roomTotal*room.discount/(100-room.discount||1)))+'</span></div>':'')+
+              (pc.promo.ok&&pc.promo.discount?'<div class="sum-row" style="color:var(--success)"><span class="k">Promo '+App.esc(pc.promo.code)+'</span><span class="v">&minus; '+App.money(pc.promo.discount)+'</span></div>':'')+
+              '<div class="sum-row" style="border-bottom:1px solid var(--border);padding-bottom:.7rem;margin-bottom:.6rem"><span class="k">Taxes &amp; fees</span><span class="v">+'+App.money(pc.tax)+'</span></div>'+
+              '<div class="sum-total" style="margin-bottom:1.1rem"><span class="k">Total to pay</span><span class="v">'+App.money(pc.total)+'</span></div>'+
+              '<div class="field"><label>Payment</label>'+
+              '<div class="pay-sel">'+
+              '<button id="payPaid" class="'+(PAY==='paid'?'active':'')+'"><span class="bic">'+App.icon('checkCircle','icon')+'</span>Pay now<br><span class="text-xs" style="font-weight:500">Online</span></button>'+
+              '<button id="payUnpaid" class="'+(PAY==='unpaid'?'active':'')+'"><span class="bic">'+App.icon('clock','icon')+'</span>Pay at desk<br><span class="text-xs" style="font-weight:500">Unpaid</span></button>'+
+              '</div><div class="hint" id="payHint">'+(PAY==='paid'?"You'll be taken straight to the payment page (bKash / Nagad / Card) to complete this booking.":'You can settle at check-in or online from your dashboard.')+'</div></div>'+
+              '<div class="row" style="align-items:center;gap:.6rem;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:.8rem">'+App.avatarHTML(cu,'avatar sm')+'<div class="text-sm" style="color:var(--muted)">Booking will be under <b style="color:var(--text)">'+App.esc(GUEST.title)+'</b> · '+App.esc(GUEST.email)+'</div></div>';
+      bind('payPaid','click',function(){ PAY='paid'; document.getElementById('payPaid').classList.add('active'); document.getElementById('payUnpaid').classList.remove('active'); document.getElementById('payHint').textContent="You'll be taken straight to the payment page (bKash / Nagad / Card) to complete this booking."; document.getElementById('wNext').innerHTML='Confirm &amp; pay'; });
+      bind('payUnpaid','click',function(){ PAY='unpaid'; document.getElementById('payUnpaid').classList.add('active'); document.getElementById('payPaid').classList.remove('active'); document.getElementById('payHint').textContent='You can settle at check-in or online from your dashboard.'; document.getElementById('wNext').innerHTML='Confirm booking'; });
+      document.getElementById('wNext').innerHTML=PAY==='paid'?'Confirm &amp; pay':'Confirm booking';
+    }
+
+    function bind(id,ev,fn){ var el=document.getElementById(id); if(el)el.addEventListener(ev,fn); }
+    function $$(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+    var next=document.getElementById('wNext'), prev=document.getElementById('wPrev');
+    next.addEventListener('click',function(){
+      if(step===1){
+        if(App.nights(S.checkin,S.checkout)<=0){ App.toast('Check-out must be after check-in.','warning'); return; }
+        step=2;
+      } else if(step===2){ step=3; }
+      else if(step===3){
+        gatherGuest();
+        App.clearErrors(document.getElementById('wizCard'));
+        var ok=App.fieldErrors([{id:'gName',req:true},{id:'gEmail',req:true,pattern:/^[^@\s]+@[^@\s]+\.[^@\s]+$/},{id:'gPhone',req:true,pattern:/^[+\d][\d\s()-]{6,18}$/}]);
+        if(!ok){ App.toast('Please check the guest details.','warning'); return; }
+        step=4;
+      } else if(step===4){
+        confirmBooking();
+        return;
+      }
+      paint();
+    });
+    prev.addEventListener('click',function(){ if(step>1)step--; paint(); });
+    function paint(){
+      stepsBar();
+      if(step===1)step1(); if(step===2)step2(); if(step===3)step3(); if(step===4)step4();
+      prev.style.visibility=(step===1)?'hidden':'visible';
+      next.textContent=step===4?(PAY==='paid'?'Confirm &amp; pay':'Confirm booking'):'Continue';
+      window.scrollTo({top:0,behavior:'smooth'});
+      refreshSummary();
+    }
+    function confirmBooking(){
+      var form=document.createElement('form');
+      form.method='POST'; form.action='/booking/create'; form.style.display='none';
+      function addField(name,value){ var i=document.createElement('input'); i.type='hidden'; i.name=name; i.value=value; form.appendChild(i); }
+      addField('roomId',room.id);
+      addField('guestName',GUEST.title);
+      addField('guestEmail',GUEST.email);
+      addField('guestPhone',GUEST.phone);
+      addField('checkIn',S.checkin);
+      addField('checkOut',S.checkout);
+      addField('adults',S.adults);
+      addField('children',S.children);
+      addField('withPet',S.pets?'true':'false');
+      addField('specialRequests',GUEST.request||'');
+      addField('promoCode',PROMO.ok?PROMO.code:'');
+      addField('paymentIntent',PAY==='paid'?'online':'desk');
+      document.body.appendChild(form);
+      App.toast('Submitting your booking...');
+      form.submit();
+    }
+    paint();
+  })();
+</script>
+</body>
+</html>

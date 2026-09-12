@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking List · Haven</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/booking.css}">
+</head>
+<body>
+<div class="wrap">
+
+    <!-- ============ Top bar ============ -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="brand-mark"><span class="dot"></span> Haven Hotel</div>
+            <div>
+                <p class="topbar-title" style="font-size:20px;margin:0;">Booking list</p>
+                <p class="topbar-sub" id="countLabel"
+                   th:text="${#lists.size(bookings)} + ' booking(s) on file'">0 booking(s) on file</p>
+            </div>
+        </div>
+
+        <div class="topbar-filters">
+            <input type="text" id="searchInput" name="q" placeholder="Search anything (name, email, room, passport...)">
+            <select id="statusFilter" name="status">
+                <option value="">All payment status</option>
+                <option value="Paid">Paid</option>
+                <option value="Partial">Partial</option>
+                <option value="Unpaid">Unpaid</option>
+            </select>
+        </div>
+
+        <!-- Link out to the add-booking form -->
+        <a class="btn btn-primary" th:href="@{/booking/add}">+ Add booking</a>
+    </div>
+
+    <!-- ============ Empty state (no bookings at all) ============ -->
+    <div class="empty-state" th:if="${#lists.isEmpty(bookings)}">
+        <p>No bookings yet. Add the first guest to see them listed here.</p>
+        <a class="btn btn-primary" th:href="@{/booking/add}">+ Add booking</a>
+    </div>
+
+    <!-- ============ No-search-result state (bookings exist but filter matched nothing) ============ -->
+    <div class="empty-state" id="noResultState" style="display:none;" th:if="${not #lists.isEmpty(bookings)}">
+        <p>No bookings match your search.</p>
+    </div>
+
+    <!-- ============ Card grid — renders every booking dynamically ============ -->
+    <div class="list-grid" id="listGrid" th:if="${not #lists.isEmpty(bookings)}">
+
+        <div class="booking-card" th:each="b : ${bookings}"
+             th:data-status="${b.paymentStatus}"
+             th:data-search="${#strings.toLowerCase(
+                    b.fullName + ' ' + b.email + ' ' + b.mobile + ' ' + b.country + ' ' +
+                    b.passport + ' ' + b.floor + ' ' + b.room + ' ' + b.roomType + ' ' +
+                    b.paymentStatus + ' ' + b.amount
+             )}">
+
+            <div class="booking-card-accent"
+                 th:classappend="${b.paymentStatus == 'Paid'} ? 'status-paid' : (${b.paymentStatus == 'Partial'} ? 'status-partial' : 'status-unpaid')"></div>
+
+            <div class="booking-card-head">
+                <div class="avatar" th:text="${#strings.substring(b.fullName,0,1)}">A</div>
+                <div class="booking-card-headtext">
+                    <h3 th:text="${b.fullName}">Guest name</h3>
+                    <div class="sub-line" th:text="${b.country}">Bangladesh</div>
+                </div>
+                <span class="room-tag" th:text="'Room ' + ${b.room}">Room 302</span>
+            </div>
+
+            <div class="booking-card-body">
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6l9 6 9-6"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg>
+            Email
+          </span>
+                    <span class="v" th:text="${b.email}">guest@example.com</span>
+                </div>
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.4 2.1L8.1 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z"/></svg>
+            Mobile
+          </span>
+                    <span class="v" th:text="${b.mobile}">+880 1712 345678</span>
+                </div>
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M7 12h.01M7 17h.01"/></svg>
+            Passport
+          </span>
+                    <span class="v" th:text="${b.passport}">A01234567</span>
+                </div>
+
+                <div class="divider-thin"></div>
+
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+            Stay dates
+          </span>
+                    <span class="v" th:text="${#temporals.format(b.checkin,'dd MMM')} + ' → ' + ${#temporals.format(b.checkout,'dd MMM yyyy')}">01 Aug → 04 Aug</span>
+                </div>
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            Floor · Days
+          </span>
+                    <span class="v" th:text="'F' + ${b.floor} + ' · ' + ${b.days} + 'N'">F3 · 3N</span>
+                </div>
+                <div class="kv-row">
+          <span class="k">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Amount
+          </span>
+                    <span class="v" th:text="'৳' + ${b.amount}">৳6500</span>
+                </div>
+
+                <span class="status-pill"
+                      th:text="${b.paymentStatus}"
+                      th:classappend="${b.paymentStatus == 'Paid'} ? 'status-paid' : (${b.paymentStatus == 'Partial'} ? 'status-partial' : 'status-unpaid')">
+          Paid
+        </span>
+            </div>
+
+            <div class="booking-card-foot">
+                <a class="icon-btn edit" th:href="@{/booking/edit/{id}(id=${b.id})}">Edit</a>
+
+                <!-- Plain HTML form — POST + method override, no JS involved -->
+                <form class="delete-form"
+                      th:action="@{/booking/delete/{id}(id=${b.id})}"
+                      method="post">
+
+                    <button type="submit" class="icon-btn del">
+                        Delete
+                    </button>
+
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+
+    <p class="footnote">Every card above is rendered from the database with <code>th:each</code> — new bookings appear automatically.</p>
+
+</div>
+
+<script>
+    // ---- Live client-side search/filter (no page reload, no server call) ----
+    const searchInput  = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const listGrid      = document.getElementById('listGrid');
+    const noResultState = document.getElementById('noResultState');
+    const countLabel     = document.getElementById('countLabel');
+
+    function applyFilter() {
+        if (!listGrid) return; // no bookings at all -> nothing to filter
+
+        const query  = searchInput.value.trim().toLowerCase();
+        const status = statusFilter.value;
+
+        const cards = listGrid.querySelectorAll('.booking-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const searchText  = card.dataset.search || '';
+            const cardStatus  = card.dataset.status || '';
+
+            const matchesQuery  = query === '' || searchText.includes(query);
+            const matchesStatus = status === '' || cardStatus === status;
+            const isVisible = matchesQuery && matchesStatus;
+
+            card.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        // Show/hide the "no results" message and grid itself
+        noResultState.style.display = (visibleCount === 0) ? 'block' : 'none';
+        listGrid.style.display      = (visibleCount === 0) ? 'none' : '';
+
+        // Keep the top-bar counter in sync with what's actually visible
+        countLabel.textContent = visibleCount + ' booking(s) on file';
+    }
+
+    if (searchInput)  searchInput.addEventListener('input', applyFilter);
+    if (statusFilter) statusFilter.addEventListener('change', applyFilter);
+</script>
+
+<script>
+
+    document.querySelectorAll(".delete-form").forEach(form => {
+
+        form.addEventListener("submit", function(e){
+
+            e.preventDefault();
+
+            Swal.fire({
+                title: "Delete Booking?",
+                text: "This booking will be permanently deleted!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
+                confirmButtonText: "Yes, Delete",
+                cancelButtonText: "Cancel"
+
+            }).then((result)=>{
+
+                if(result.isConfirmed){
+
+                    form.submit();
+
+                }
+
+            });
+
+        });
+
+    });
+
+</script>
+
+</body>
+</html>

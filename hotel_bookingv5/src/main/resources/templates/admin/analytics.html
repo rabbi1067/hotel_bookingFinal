@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analytics | Admin</title>
+  <meta name="description" content="Professional hotel booking management system">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/base.css}">
+  <style>
+    .an-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:1rem;align-items:start}
+    .an-grid .full{grid-column:1/-1}
+    .rank-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+    .rank-row:last-child{border-bottom:0}
+    .rank-num{width:26px;height:26px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex:none}
+    .rank-row:nth-child(-n+3) .rank-num{background:var(--grad);color:#fff}
+    .bar-track{flex:1;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
+    .bar-track i{display:block;height:100%;background:var(--grad);border-radius:99px}
+    .chip-btn.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+    @media(max-width:920px){.an-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="an">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Deep dive</div><h2 style="font-family:var(--display)">Analytics</h2></div>
+        <div class="row" style="gap:.5rem" id="anRange">
+          <button class="chip-btn on" data-days="7">7d</button><button class="chip-btn" data-days="30">30d</button><button class="chip-btn" data-days="90">90d</button>
+        </div>
+      </div>
+
+      <div class="an-grid">
+        <div class="card full">
+          <div class="card-head"><h3>Booking trend</h3><span class="badge b-accent">Live</span></div>
+          <div class="card-body"><div id="trendChart" style="width:100%;height:210px"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Payment methods</h3></div>
+          <div class="card-body"><div id="srcDonut"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Top rooms by revenue</h3><a class="export" th:href="@{/admin/reports}">Full report</a></div>
+          <div class="card-body" id="topRooms"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="javascript">
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+</script>
+<script th:inline="none">
+
+  App.boot({guard:'admin'});
+  App.renderDashChrome('aal','Analytics',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Reports',href:'/admin/reports'},{label:'Analytics',href:'#'}]);
+  (function(){
+    var allBookings=App.getBookings();
+    var rooms=App.getRooms();
+
+    function bookingsInRange(days){
+      var cutoff=new Date();
+      cutoff.setDate(cutoff.getDate()-days);
+      return allBookings.filter(function(b){ return App.parseISO(b.createdAt)>=cutoff; });
+    }
+
+    // Buckets the range into a readable number of points (daily for 7d,
+    // ~10 points for 30d, ~12 points for 90d) instead of one point per day,
+    // which would make the 90d view an unreadable wall of labels.
+    function renderTrend(days){
+      var now=new Date();
+      var start=new Date(); start.setDate(start.getDate()-days);
+      var bucketCount=days<=7?days:(days<=30?10:12);
+      var bucketMs=(now.getTime()-start.getTime())/bucketCount;
+      var labels=[], newB=[], checkedIn=[];
+      for(var i=0;i<bucketCount;i++){
+        labels.push(App.shortDate(new Date(start.getTime()+(i+1)*bucketMs)));
+        newB.push(0); checkedIn.push(0);
+      }
+      function idxFor(d){ return Math.max(0,Math.min(bucketCount-1,Math.floor((d.getTime()-start.getTime())/bucketMs))); }
+
+      allBookings.forEach(function(b){
+        var created=App.parseISO(b.createdAt);
+        if(created>=start&&created<=now){ newB[idxFor(created)]++; }
+        if(b.status==='active'||b.status==='completed'){
+          var ci=App.parseISO(b.checkIn);
+          if(ci>=start&&ci<=now){ checkedIn[idxFor(ci)]++; }
+        }
+      });
+
+      App.Charts.line(document.getElementById('trendChart'),labels,[
+        {name:'New bookings',data:newB},
+        {name:'Checked-in guests',data:checkedIn}
+      ],{h:200});
+    }
+
+    // Real revenue per room (non-cancelled bookings only) within the
+    // selected range - replaces the old r.popularity field, which doesn't
+    // exist anywhere on the Room entity and made this widget render NaN.
+    function renderTopRooms(days){
+      var bookings=bookingsInRange(days);
+      var revByRoom={};
+      bookings.forEach(function(b){
+        if(b.status==='cancelled')return;
+        revByRoom[b.roomId]=(revByRoom[b.roomId]||0)+(b.totalAmount||0);
+      });
+      var ranked=rooms.map(function(r){ return {room:r, revenue:revByRoom[String(r.id)]||0}; })
+              .sort(function(a,b){ return b.revenue-a.revenue; })
+              .slice(0,5);
+
+      var el=document.getElementById('topRooms');
+      if(!ranked.length||ranked[0].revenue===0){
+        el.innerHTML='<div class="text-sm" style="color:var(--muted);padding:.5rem 0">No room revenue in this range yet.</div>';
+        return;
+      }
+      var pmax=ranked[0].revenue||1;
+      el.innerHTML=ranked.map(function(x,i){
+        var r=x.room;
+        return '<div class="rank-row"><span class="rank-num">'+(i+1)+'</span><div style="width:34%"><div class="text-sm strong">'+App.esc(r.name)+'</div><div class="text-xs" style="color:var(--muted)">'+App.money(r.price)+'/night</div></div><div class="bar-track"><i style="width:'+Math.max(8,Math.round(x.revenue/pmax*100))+'%"></i></div><b style="font-size:.82rem">'+App.money(x.revenue)+'</b></div>';
+      }).join('');
+    }
+
+    // "Booking sources" (Direct/Google/etc.) isn't trackable - no such
+    // column exists anywhere in the schema. Replaced with something the
+    // data actually supports and that's genuinely useful to a hotel admin:
+    // a live breakdown of which payment method guests actually use, for
+    // the same date range as the rest of this page.
+    var PAY_LABELS={BKASH:'bKash', NAGAD:'Nagad', CARD:'Card', CASH:'Cash'};
+    function payLabel(m){ return m?(PAY_LABELS[m]||App.cap(m.toLowerCase())):'Not specified'; }
+
+    function renderPaymentMethods(days){
+      var bookings=bookingsInRange(days);
+      var counts={};
+      bookings.forEach(function(b){
+        var label=payLabel(b.paymentMethod);
+        counts[label]=(counts[label]||0)+1;
+      });
+      var items=Object.keys(counts).map(function(k){ return {label:k, value:counts[k]}; })
+              .sort(function(a,b){ return b.value-a.value; });
+
+      var el=document.getElementById('srcDonut');
+      if(!items.length){
+        el.innerHTML='<div class="text-sm" style="color:var(--muted);text-align:center">No bookings in this range yet.</div>';
+        return;
+      }
+      App.Charts.donut(el,items,{});
+    }
+
+    function renderAnalytics(days){
+      renderTrend(days);
+      renderTopRooms(days);
+      renderPaymentMethods(days);
+    }
+
+    renderAnalytics(7);
+
+    document.getElementById('anRange').addEventListener('click',function(e){
+      var b=e.target.closest('.chip-btn'); if(!b)return;
+      document.querySelectorAll('#anRange .chip-btn').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      renderAnalytics(parseInt(b.getAttribute('data-days'),10));
+      App.toast('Range updated to '+b.textContent+'.');
+    });
+  })();
+</script>
+</body>
+</html>

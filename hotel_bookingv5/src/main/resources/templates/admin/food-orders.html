@@ -1,0 +1,364 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Food Orders | Admin</title>
+  <style>
+    .ord-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+    .ord-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.15rem 1.25rem;box-shadow:var(--shadow-sm);margin-bottom:.9rem;transition:box-shadow .16s ease,transform .16s ease}
+    .ord-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+    .ord-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+    .ord-identity{display:flex;align-items:flex-start;gap:.7rem;min-width:0}
+    .ord-identity .ord-select{margin-top:.25rem;flex:0 0 auto}
+    .ord-id{font-family:var(--display);font-weight:700;font-size:.86rem;line-height:1.2;color:var(--primary);letter-spacing:.02em}
+    .ord-guest{font-weight:750;font-size:1rem;margin-top:.3rem;color:var(--text)}
+    .ord-email{font-size:.78rem;color:var(--muted-2);margin-top:.12rem;overflow-wrap:anywhere}
+    .ord-summary{text-align:right;min-width:100px}
+    .ord-total{font-size:1.08rem;font-weight:800;margin-top:.4rem}
+    .ord-items{font-size:.9rem;color:var(--text);background:var(--surface-2);border-radius:10px;padding:.65rem .8rem;margin-top:.9rem;max-width:none}
+    .ord-items-label{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:.15rem}
+    .ord-info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin-top:.75rem}
+    .ord-info{border:1px solid var(--border);border-radius:9px;padding:.55rem .65rem;min-width:0}
+    .ord-info-label{display:block;font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;margin-bottom:.18rem}
+    .ord-info-value{font-size:.82rem;color:var(--text);overflow-wrap:anywhere}
+    .ord-meta{font-size:.78rem;color:var(--muted-2);margin-top:.7rem;display:flex;gap:.9rem;flex-wrap:wrap}
+    .ord-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
+    .stat-card{flex:1 1 160px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1.1rem}
+    .ord-card.active-order{border-left:3px solid var(--accent)}
+    #ordPager{display:flex;justify-content:center;margin:1.2rem 0 0}
+
+    /* Details modal */
+    .order-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--surface),var(--surface-2))}
+    .order-detail-kicker{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:.28rem}
+    .order-detail-id{font-family:var(--display);font-size:1.12rem;font-weight:800;color:var(--text);letter-spacing:.01em}
+    .order-detail-subtitle{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+    .order-detail-status{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:.45rem}
+    .order-detail-total{font-size:1.12rem;font-weight:850;color:var(--text)}
+    .order-detail-body{padding:1.2rem 1.25rem}
+    .order-detail-customer{display:flex;align-items:flex-start;gap:.8rem;padding:.9rem 1rem;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:1.1rem}
+    .order-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 38px;background:var(--primary);color:#fff;font-weight:800;font-size:.95rem}
+    .order-detail-customer-name{font-weight:800;font-size:.98rem;color:var(--text)}
+    .order-detail-customer-contact{font-size:.8rem;color:var(--muted);margin-top:.18rem;overflow-wrap:anywhere}
+    .order-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin-bottom:1.2rem}
+    .order-detail-info{padding:.8rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+    .order-detail-info-label{font-size:.67rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:.28rem}
+    .order-detail-info-value{font-size:.84rem;color:var(--text);line-height:1.35;overflow-wrap:anywhere}
+    .order-detail-section-title{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:850;margin:0 0 .55rem}
+    .tracking-stepper{display:flex;align-items:flex-start;margin:.2rem 0 1.35rem;overflow-x:auto;padding:.25rem .1rem .5rem}
+    .tracking-step{flex:1 1 0;min-width:120px;position:relative;text-align:center}
+    .tracking-step:not(:last-child)::before{content:'';position:absolute;left:calc(50% + 16px);right:calc(-50% + 16px);top:15px;height:2px;background:var(--border,#e5e7eb)}
+    .tracking-step.completed:not(:last-child)::before,.tracking-step.current:not(:last-child)::before{background:var(--accent,#0d524d)}
+    .tracking-dot{position:relative;margin:0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-muted,#f3f4f6);border:2px solid var(--border,#e5e7eb);color:var(--muted);font-size:.8rem;font-weight:700;z-index:1}
+    .tracking-step.completed .tracking-dot,.tracking-step.current .tracking-dot{background:var(--accent,#0d524d);border-color:var(--accent,#0d524d);color:#fff}
+    .tracking-step.current .tracking-dot{box-shadow:0 0 0 4px rgba(13,82,77,.14)}
+    .tracking-copy{padding-top:.45rem}.tracking-label{font-weight:700;font-size:.82rem;white-space:nowrap}.tracking-time{font-size:.72rem;color:var(--muted);margin-top:.2rem;min-height:1.1em}
+    .cancelled-banner{padding:.9rem 1rem;border-radius:10px;background:rgba(180,35,24,.08);color:var(--danger,#b42318);font-weight:700;margin:0 0 1.1rem}
+    .od-items{width:100%;border-collapse:separate;border-spacing:0;font-size:.88rem;margin-top:.1rem;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .od-items th{text-align:left;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:.7rem .65rem;background:var(--surface-2);border-bottom:1px solid var(--border)}
+    .od-items td{padding:.7rem .65rem;border-bottom:1px solid var(--border);vertical-align:top}
+    .od-items tr:last-child td{border-bottom:none}
+    .od-items tfoot td{font-weight:800;border-top:1px solid var(--border);border-bottom:none;padding-top:.8rem;background:var(--surface-2)}
+    .od-items .item-name{font-weight:700;color:var(--text)}
+    .od-items .item-price{color:var(--muted);font-size:.78rem;margin-top:.15rem}
+    .order-detail-payment{display:flex;justify-content:space-between;gap:1rem;align-items:center;margin-top:1rem;padding:.85rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+    .order-detail-payment-label{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
+    .order-detail-payment-value{font-size:.86rem;font-weight:750;color:var(--text);margin-top:.2rem}
+    .order-detail-payment-state{font-size:.72rem;font-weight:800;letter-spacing:.05em;color:var(--success,#16794c)}
+    .order-detail-foot{display:flex;justify-content:flex-end;gap:.6rem;padding:1rem 1.25rem;border-top:1px solid var(--border);background:var(--surface-2)}
+    @media(max-width:700px){.ord-info-grid,.order-detail-grid{grid-template-columns:1fr}.ord-summary{min-width:auto}.order-detail-head{padding:.95rem}.order-detail-body{padding:1rem}.order-detail-foot{padding:.85rem 1rem}.order-detail-status{align-items:flex-start;text-align:left}.order-detail-head{flex-direction:column}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="afo">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title mb-3"><div class="eyebrow">Guest services</div><h2 style="font-family:var(--display)">Food orders</h2><p>Every room-service and dining order placed by guests, with live status.</p></div>
+
+      <div class="row" style="gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem" id="statsBar">
+        <div class="stat-card"><div class="text-xs" style="color:var(--muted)">Today's orders</div><div class="text-lg strong" id="statToday">0</div></div>
+        <div class="stat-card"><div class="text-xs" style="color:var(--muted)">Pending</div><div class="text-lg strong" id="statPending">0</div></div>
+        <div class="stat-card"><div class="text-xs" style="color:var(--muted)">Revenue today</div><div class="text-lg strong" id="statRevenue">$0</div></div>
+        <div class="stat-card"><div class="text-xs" style="color:var(--muted)">Cancelled today</div><div class="text-lg strong" id="statCancelled">0</div></div>
+      </div>
+
+      <div class="ord-tabs" id="ordTabs">
+        <button class="chip-btn on" data-status="">All</button>
+        <button class="chip-btn" data-status="PLACED">Placed</button>
+        <button class="chip-btn" data-status="PREPARING">Preparing</button>
+        <button class="chip-btn" data-status="OUT_FOR_DELIVERY">Out for delivery</button>
+        <button class="chip-btn" data-status="DELIVERED">Delivered</button>
+        <button class="chip-btn" data-status="CANCELLED">Cancelled</button>
+      </div>
+
+      <div class="row mb-3" style="gap:.7rem;flex-wrap:wrap;align-items:center">
+        <div class="input-affix" style="width:340px"><span data-icon="search"></span><input class="input" id="ordSearch" placeholder="Search by order ID, guest, email, or item..."></div>
+        <select class="input" id="dateFilter" style="max-width:160px"><option value="">All time</option><option value="today">Today</option><option value="week">This week</option></select>
+      </div>
+
+      <div class="row" id="bulkBar" style="display:none;gap:.6rem;align-items:center;margin-bottom:1rem;padding:.8rem;background:var(--surface-2);border-radius:var(--radius)">
+        <span id="bulkCount">0 selected</span>
+        <select class="input" id="bulkStatus" style="max-width:200px"><option value="PREPARING">Preparing</option><option value="OUT_FOR_DELIVERY">Out for delivery</option><option value="DELIVERED">Delivered</option><option value="CANCELLED">Cancelled</option></select>
+        <button class="btn btn-primary btn-sm" id="applyBulk">Apply</button>
+      </div>
+
+      <div id="ordList"></div>
+      <div id="ordPager"></div>
+    </div>
+  </main>
+</div>
+
+<form id="statusForm" method="post" class="hide">
+  <input type="hidden" name="status" id="statusData">
+  <input type="hidden" name="reason" id="reasonData">
+</form>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ORDERS__ = /*[[${ordersForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+  App.boot({guard:'staff'});
+  App.renderDashChrome('afo','Food Orders',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Food Orders',href:'#'}]);
+  (function(){
+    var filter='';
+    var q='';
+    var dateFilterValue='';
+    var page=1, perPage=3;
+    var selectedIds={};
+    var list=document.getElementById('ordList');
+    var priority={PLACED:0,PREPARING:1,OUT_FOR_DELIVERY:2,DELIVERED:3,CANCELLED:4};
+
+    function badge(status){
+      var m={PLACED:['b-plain','Placed'],PREPARING:['b-warning','Preparing'],OUT_FOR_DELIVERY:['b-accent','Out for delivery'],DELIVERED:['b-success','Delivered'],CANCELLED:['b-danger','Cancelled']};
+      var cfg=m[String(status||'').toUpperCase()]||m.PLACED;
+      return '<span class="badge '+cfg[0]+'">'+cfg[1]+'</span>';
+    }
+    function paymentLabel(o){
+      return {CARD:'Card',CASH:'Cash on Delivery',BKASH:'bKash',card:'Card',cash:'Cash on Delivery',bkash:'bKash'}[o.paymentMethod]||o.paymentMethod||'—';
+    }
+    function paymentStatusLabel(value){
+      var v=String(value||'').toUpperCase();
+      return v==='PAID'?'PAID':(v||'—');
+    }
+    function nextAction(o){
+      if(o.status==='PLACED')return {label:'Start preparing',status:'PREPARING'};
+      if(o.status==='PREPARING')return {label:'Out for delivery',status:'OUT_FOR_DELIVERY'};
+      if(o.status==='OUT_FOR_DELIVERY')return {label:'Mark delivered',status:'DELIVERED'};
+      return null;
+    }
+
+    /*
+     * Parse every date shape used by the server. The old implementation first
+     * trusted browser parsing for strings like "Sep 7, 2:27 PM", which behaves
+     * differently across browsers and can silently return an invalid date.
+     */
+    function parseDateValue(value){
+      if(value instanceof Date)return isNaN(value.getTime())?null:value;
+      if(value===null||value===undefined)return null;
+      if(typeof value==='number'){
+        var numericDate=new Date(value<100000000000?value*1000:value);
+        return isNaN(numericDate.getTime())?null:numericDate;
+      }
+      var raw=String(value).trim();
+      if(!raw)return null;
+
+      var direct=new Date(raw);
+      if(!isNaN(direct.getTime()))return direct;
+
+      var match=raw.match(/^([A-Za-z]{3,9})\s+(\d{1,2})(?:,\s*(\d{4}))?,?\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if(!match)return null;
+      var months={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+      var month=months[match[1].toLowerCase()];
+      if(month===undefined)return null;
+      var now=new Date();
+      var year=Number(match[3]||now.getFullYear());
+      var hour=Number(match[4])%12+(match[6].toUpperCase()==='PM'?12:0);
+      var parsed=new Date(year,month,Number(match[2]),hour,Number(match[5]),0,0);
+      return isNaN(parsed.getTime())?null:parsed;
+    }
+    function orderDate(o){
+      var candidates=[o.createdAtIso,o.createdAt,o.orderDate,o.date];
+      for(var i=0;i<candidates.length;i++){
+        var parsed=parseDateValue(candidates[i]);
+        if(parsed)return parsed;
+      }
+      return null;
+    }
+    function startOfDay(date){return new Date(date.getFullYear(),date.getMonth(),date.getDate());}
+    function startOfWeek(date){
+      var day=date.getDay();
+      var daysFromMonday=(day+6)%7;
+      var start=startOfDay(date);
+      start.setDate(start.getDate()-daysFromMonday);
+      return start;
+    }
+    function inDateRange(o){
+      if(!dateFilterValue)return true;
+      var d=orderDate(o); if(!d)return false;
+      var now=new Date();
+      var start=dateFilterValue==='today'?startOfDay(now):startOfWeek(now);
+      var end=dateFilterValue==='today'?new Date(start.getTime()+86400000):new Date(start.getTime()+7*86400000);
+      return d.getTime()>=start.getTime()&&d.getTime()<end.getTime();
+    }
+    function renderStats(){
+      var all=(window.__SERVER_ORDERS__||[]);
+      var todays=all.filter(function(o){return inSameLocalDay(orderDate(o),new Date());});
+      var pending=all.filter(function(o){return o.status==='PLACED'||o.status==='PREPARING';});
+      var revenue=todays.filter(function(o){return o.status!=='CANCELLED';}).reduce(function(sum,o){return sum+Number(o.total||0);},0);
+      document.getElementById('statToday').textContent=todays.length;
+      document.getElementById('statPending').textContent=pending.length;
+      document.getElementById('statRevenue').textContent=App.money(revenue);
+      document.getElementById('statCancelled').textContent=todays.filter(function(o){return o.status==='CANCELLED';}).length;
+    }
+    function inSameLocalDay(a,b){
+      return !!a&&!!b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+    }
+    function updateBulkBar(){
+      var count=Object.keys(selectedIds).length;
+      document.getElementById('bulkCount').textContent=count+' selected';
+      document.getElementById('bulkBar').style.display=count?'flex':'none';
+    }
+    function render(){
+      renderStats();
+      var orders=(window.__SERVER_ORDERS__||[]).slice();
+      if(filter)orders=orders.filter(function(o){return String(o.status||'').toUpperCase()===filter;});
+      orders=orders.filter(inDateRange);
+      if(q){
+        var needle=q.toLowerCase();
+        orders=orders.filter(function(o){
+          var itemText='';
+          try{itemText=(JSON.parse(o.itemsJson||'[]')||[]).map(function(it){return it.name||it.foodName||'';}).join(' ');}catch(e){}
+          return [o.orderId,o.guestName,o.guestEmail,o.label,o.status,itemText].map(function(v){return String(v||'').toLowerCase();}).join(' ').indexOf(needle)>-1;
+        });
+      }
+      orders.sort(function(a,b){
+        var ad=orderDate(a),bd=orderDate(b);
+        return (bd?bd.getTime():0)-(ad?ad.getTime():0) || String(b.id||'').localeCompare(String(a.id||''));
+      });
+      var totalPages=Math.max(1,Math.ceil(orders.length/perPage));
+      if(page>totalPages)page=totalPages;
+      if(!orders.length){list.innerHTML=App.emptyState('inbox','No orders here','No food orders match this filter yet.','');document.getElementById('ordPager').innerHTML='';updateBulkBar();return;}
+      var pageOrders=orders.slice((page-1)*perPage,page*perPage);
+      list.innerHTML=pageOrders.map(function(o){
+        var next=nextAction(o), status=String(o.status||'').toUpperCase(), active=status==='PLACED'||status==='PREPARING'||status==='OUT_FOR_DELIVERY';
+        return '<div class="ord-card'+(active?' active-order':'')+'" data-id="'+o.id+'">'+
+                '<div class="ord-top">'+
+                '<div class="ord-identity"><input type="checkbox" class="ord-select" data-select="'+o.id+'" '+(selectedIds[o.id]?'checked':'')+' aria-label="Select order '+App.esc(o.orderId||o.id)+'"><div><div class="ord-id">'+App.esc(o.orderId||('#'+o.id))+'</div><div class="ord-guest">'+App.esc(o.guestName||'Guest')+'</div><div class="ord-email">'+App.esc(o.guestEmail||'')+'</div></div></div>'+
+                '<div class="ord-summary">'+badge(o.status)+'<div class="ord-total">'+App.money(o.total)+'</div></div>'+
+                '</div>'+
+                '<div class="ord-items"><span class="ord-items-label">Items</span>'+App.esc(o.label||'No item summary')+'</div>'+
+                '<div class="ord-info-grid">'+
+                '<div class="ord-info"><span class="ord-info-label">Payment</span><span class="ord-info-value">'+App.esc(paymentLabel(o))+' • '+App.esc(paymentStatusLabel(o.paymentStatus))+'</span></div>'+
+                '<div class="ord-info"><span class="ord-info-label">Location</span><span class="ord-info-value">'+App.esc(o.where||'—')+'</span></div>'+
+                '<div class="ord-info"><span class="ord-info-label">Placed</span><span class="ord-info-value">'+App.esc(o.date||'—')+'</span></div>'+
+                '</div>'+
+                '<div class="ord-actions">'+
+                '<button class="btn btn-ghost btn-sm" data-details="'+o.id+'">View details</button>'+
+                (next?'<button class="btn btn-primary btn-sm" data-next="'+o.id+'" data-status="'+next.status+'">'+next.label+'</button>':'')+
+                (o.status!=='DELIVERED'&&o.status!=='CANCELLED'?'<button class="btn btn-ghost btn-sm" data-cancel="'+o.id+'">Cancel order</button>':'')+
+                '</div>'+
+                '</div>';
+      }).join('');
+      document.getElementById('ordPager').innerHTML=App.pagination(page,totalPages,function(){});
+      App.initPager(document.getElementById('ordPager'),function(p){page=p;render();});
+      list.querySelectorAll('[data-select]').forEach(function(box){box.addEventListener('change',function(){if(box.checked)selectedIds[box.dataset.select]=true;else delete selectedIds[box.dataset.select];updateBulkBar();});});
+      list.querySelectorAll('[data-details]').forEach(function(b){b.addEventListener('click',function(){openDetails(orders.filter(function(x){return String(x.id)===b.dataset.details;})[0]);});});
+      list.querySelectorAll('[data-next]').forEach(function(b){b.addEventListener('click',function(){submitStatus(b.dataset.next,b.dataset.status,'');});});
+      list.querySelectorAll('[data-cancel]').forEach(function(b){b.addEventListener('click',function(){
+        var promptResult=typeof App.openPrompt==='function'?App.openPrompt('Cancel this order?','Reason (optional)'):Promise.resolve(window.prompt('Cancel this order? Reason (optional)',''));
+        promptResult.then(function(reason){if(reason===null)return;submitStatus(b.dataset.cancel,'CANCELLED',reason||'');});
+      });});
+      updateBulkBar();
+    }
+    function orderTime(value){
+      var parsed=parseDateValue(value);
+      if(!value)return 'Pending';
+      return !parsed?String(value):parsed.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    }
+    function trackingStep(label,time,index,currentIndex){
+      var state=index<currentIndex?'completed':(index===currentIndex?'current':'');
+      var timestamp=index<=currentIndex?orderTime(time):'';
+      return '<div class="tracking-step '+state+'"><div class="tracking-dot">'+(index<currentIndex?'✓':String(index+1))+'</div><div class="tracking-copy"><div class="tracking-label">'+label+'</div><div class="tracking-time">'+App.esc(timestamp)+'</div></div></div>';
+    }
+    function adminTrackingStepper(o){
+      var status=String(o.status||'PLACED').toUpperCase();
+      if(status==='CANCELLED')return '<div class="cancelled-banner">Cancelled'+(o.cancelReason?': '+App.esc(o.cancelReason):'')+'</div>';
+      var idx={PLACED:0,PREPARING:1,OUT_FOR_DELIVERY:2,DELIVERED:3}[status];
+      if(typeof idx!=='number')idx=0;
+      return '<div class="order-detail-section-title">Order progress</div><div class="tracking-stepper">'+trackingStep('Placed',o.date,0,idx)+trackingStep('Preparing',o.preparingAt,1,idx)+trackingStep('Out for delivery',o.outForDeliveryAt,2,idx)+trackingStep('Delivered',o.deliveredAt,3,idx)+'</div>';
+    }
+    function initials(name){
+      return String(name||'Guest').trim().split(/\s+/).slice(0,2).map(function(part){return part.charAt(0).toUpperCase();}).join('')||'G';
+    }
+    function openDetails(o){
+      if(!o)return;
+      var items=[];
+      try{items=JSON.parse(o.itemsJson||'[]')||[];}catch(e){items=[];}
+      var itemRows=items.map(function(it){
+        var itemName=it.name||it.foodName||'Item';
+        var qty=Number(it.qty||it.quantity||1);
+        var price=Number(it.price||0);
+        var lineTotal=it.lineTotal!==undefined?Number(it.lineTotal):price*qty;
+        return '<tr><td><div class="item-name">'+App.esc(itemName)+'</div><div class="item-price">'+App.money(price)+' each</div></td><td style="text-align:center">'+qty+'</td><td style="text-align:right">'+App.money(price)+'</td><td style="text-align:right;font-weight:700">'+App.money(lineTotal)+'</td></tr>';
+      }).join('');
+      var modalHtml=
+              '<div class="order-detail-head">'+
+              '<div><div class="order-detail-kicker">Food order</div><div class="order-detail-id">'+App.esc(o.orderId||('Order #'+o.id))+'</div><div class="order-detail-subtitle">Placed '+App.esc(o.date||'—')+'</div></div>'+
+              '<div class="order-detail-status">'+badge(o.status)+'<div class="order-detail-total">'+App.money(o.total)+'</div></div>'+
+              '</div>'+
+              '<div class="order-detail-body">'+
+              '<div class="order-detail-customer"><div class="order-avatar">'+App.esc(initials(o.guestName))+'</div><div><div class="order-detail-customer-name">'+App.esc(o.guestName||'Guest')+'</div><div class="order-detail-customer-contact">'+App.esc(o.guestEmail||'No email provided')+(o.guestPhone?' • '+App.esc(o.guestPhone):'')+'</div></div></div>'+
+              '<div class="order-detail-grid">'+
+              '<div class="order-detail-info"><div class="order-detail-info-label">Deliver to</div><div class="order-detail-info-value">'+App.esc(o.where||'—')+'</div></div>'+
+              '<div class="order-detail-info"><div class="order-detail-info-label">Payment method</div><div class="order-detail-info-value">'+App.esc(paymentLabel(o))+'</div></div>'+
+              '<div class="order-detail-info"><div class="order-detail-info-label">Payment status</div><div class="order-detail-info-value">'+App.esc(paymentStatusLabel(o.paymentStatus))+'</div></div>'+
+              '</div>'+
+              adminTrackingStepper(o)+
+              '<div class="order-detail-section-title">Items ordered</div>'+
+              '<table class="od-items"><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead><tbody>'+(itemRows||'<tr><td colspan="4" style="color:var(--muted)">No itemized breakdown available for this order.</td></tr>')+'</tbody><tfoot><tr><td colspan="3" style="text-align:right">Order total</td><td style="text-align:right">'+App.money(o.total)+'</td></tr></tfoot></table>'+
+              '<div class="order-detail-payment"><div><div class="order-detail-payment-label">Payment</div><div class="order-detail-payment-value">'+App.esc(paymentLabel(o))+'</div></div><div class="order-detail-payment-state">'+App.esc(paymentStatusLabel(o.paymentStatus))+'</div></div>'+
+              '</div>'+
+              '<div class="order-detail-foot"><button class="btn btn-primary" data-close="1">Close details</button></div>';
+      var m=App.openModal(modalHtml,'lg');
+      m.q('[data-close]').addEventListener('click',function(){m.close();});
+    }
+    function submitStatus(id,status,reason){
+      var form=document.getElementById('statusForm');
+      form.action='/admin/food-orders/'+id+'/status';
+      document.getElementById('statusData').value=status;
+      document.getElementById('reasonData').value=reason||'';
+      form.submit();
+    }
+    document.getElementById('ordTabs').addEventListener('click',function(e){
+      var b=e.target.closest('.chip-btn');if(!b)return;
+      document.querySelectorAll('#ordTabs .chip-btn').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      filter=b.dataset.status;
+      page=1;
+      render();
+    });
+    document.getElementById('ordSearch').addEventListener('input',App.debounce(function(){q=this.value.trim();page=1;render();},250));
+    document.getElementById('dateFilter').addEventListener('change',function(){dateFilterValue=this.value;page=1;render();});
+    document.getElementById('applyBulk').addEventListener('click',function(){
+      var ids=Object.keys(selectedIds);if(!ids.length)return;
+      var form=document.createElement('form');form.method='post';form.action='/admin/food-orders/bulk-status';
+      ids.forEach(function(id){var input=document.createElement('input');input.type='hidden';input.name='orderIds';input.value=id;form.appendChild(input);});
+      var statusInput=document.createElement('input');statusInput.type='hidden';statusInput.name='status';statusInput.value=document.getElementById('bulkStatus').value;form.appendChild(statusInput);
+      document.body.appendChild(form);form.submit();
+    });
+    render();
+  })();
+</script>
+</body>
+</html>
+
+<!-- Changes made:
+1. Today/This week use explicit local date boundaries and support ISO, timestamps, and labels such as "Sep 7, 2:27 PM".
+2. This week is the current Monday-Sunday calendar week.
+3. The details modal now has a hierarchy, customer block, summary cards, progress section, improved item table, and payment summary.
+-->

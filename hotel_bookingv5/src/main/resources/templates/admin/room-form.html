@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Add / Edit Room | Admin</title>
+  <style>
+    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 1.4rem}
+    .form-grid .full{grid-column:1/-1}
+    .amen-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ar">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap" style="max-width:960px">
+      <div class="section-title" style="margin-bottom:1rem"><div class="eyebrow">Inventory</div><h2 id="fTitle" style="font-family:var(--display)">Add new room</h2></div>
+      <form id="roomForm" novalidate>
+        <div class="card mb-3">
+          <div class="card-head"><h3>Basic information</h3></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field"><label>Room number</label><input class="input" id="rNum" placeholder="e.g. 201"><div class="err">Room number is required.</div></div>
+              <div class="field"><label>Room name</label><input class="input" id="rName" placeholder="e.g. Deluxe King Room"><div class="err">Room name is required.</div></div>
+              <div class="field"><label>Room type</label><select class="input" id="rType"><option>Single</option><option>Double</option><option>Twin</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Premium</option></select></div>
+              <div class="field"><label>Price / night ($)</label><input class="input" id="rPrice" type="number" min="0"><div class="err">Enter a valid price.</div></div>
+              <div class="field"><label>Discount (%)</label><input class="input" id="rDisc" type="number" min="0" max="90" value="0"></div>
+              <div class="field"><label>Status</label><select class="input" id="rStatus"><option>available</option><option>occupied</option><option>reserved</option><option>maintenance</option><option>cleaning</option></select></div>
+              <div class="field full"><label>Description</label><textarea class="input" id="rDesc" rows="3"></textarea></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-head"><h3>Capacity &amp; layout</h3></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field"><label>Max guests</label><input class="input" id="rCap" type="number" min="1"><div class="err">Capacity required.</div></div>
+              <div class="field"><label>Bed type</label><input class="input" id="rBed" placeholder="e.g. 1 King Bed"></div>
+              <div class="field"><label>Size (m&sup2;)</label><input class="input" id="rSize" type="number" min="1"></div>
+              <div class="field"><label>Floor</label><input class="input" id="rFloor" type="number" min="1"></div>
+              <div class="field"><label>View</label><input class="input" id="rView" placeholder="e.g. Ocean View"></div>
+              <div class="field"><label>Rating</label><input class="input" id="rRating" type="number" step="0.1" min="1" max="5"></div>
+            </div>
+            <div class="row" style="gap:1.2rem;flex-wrap:wrap;margin-top:.3rem">
+              <label class="toggle"><input type="checkbox" id="rFeat"><span class="track"></span> Featured on homepage</label>
+              <label class="toggle"><input type="checkbox" id="rPet"><span class="track"></span> Pet friendly</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-head"><h3>Amenities</h3></div>
+          <div class="card-body"><div class="amen-grid2" id="amenGrid"></div></div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-head"><h3>Photos</h3><span class="sub">Upload photos from your device</span></div>
+          <div class="card-body">
+            <div class="row" style="gap:.6rem;flex-wrap:wrap" id="imgPreview"></div>
+            <div class="row mt-3" style="gap:.6rem">
+              <label class="btn btn-outline btn-sm"><span data-icon="camera" style="width:15px;height:15px"></span> Upload photo<input type="file" id="rUpload" accept="image/*" multiple class="hide"></label>
+              <span class="text-sm" style="color:var(--muted)">Selected photos: <b id="imgCount">0</b> (max 5)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:flex-end;gap:.7rem;margin-bottom:2rem">
+          <a class="btn btn-ghost btn-lg" th:href="@{/admin/room-management}">Cancel</a>
+          <button class="btn btn-primary btn-lg" type="submit" id="saveBtn"><span class="spin"></span><span class="lbl">Save room</span></button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'admin'});
+  App.renderDashChrome('ar','Add / Edit Room',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Rooms',href:'/admin/room-management'},{label:'Room form',href:'#'}]);
+  (function(){
+    var id=new URLSearchParams(location.search).get('id');
+    var editing=id?App.roomById(id):null;
+    document.getElementById('fTitle').textContent=editing?'Edit: '+editing.name:'Add new room';
+    if(editing)document.title='Edit '+editing.name+' | Admin';
+    var AMENS=['WiFi','Air Conditioning','TV','Breakfast','Parking','Pool','Gym','Spa','Balcony','Room Service'];
+    var amenEl=document.getElementById('amenGrid');
+    amenEl.innerHTML=AMENS.map(function(a){ return '<label class="f-check" style="border:1px solid var(--border);border-radius:9px;padding:.5rem .7rem"><input type="checkbox" value="'+a+'">'+a+'</label>'; }).join('');
+    var images=[];
+    function renderPreview(){
+      var box=document.getElementById('imgPreview');
+      box.innerHTML=images.map(function(src,i){
+        return '<div style="position:relative;width:90px;height:68px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">'+
+                '<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">'+
+                '<button type="button" data-rmimg="'+i+'" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:0;cursor:pointer;line-height:1;font-size:.9rem">&times;</button>'+
+                '</div>';
+      }).join('');
+      document.getElementById('imgCount').textContent=images.length;
+      box.querySelectorAll('[data-rmimg]').forEach(function(btn){
+        btn.addEventListener('click',function(){ images.splice(+btn.dataset.rmimg,1); renderPreview(); });
+      });
+    }
+    document.getElementById('rUpload').addEventListener('change',function(){
+      if(!this.files.length)return;
+      Array.prototype.slice.call(this.files).slice(0,5-images.length).forEach(function(file){
+        var data=new FormData();
+        data.append('file',file);
+        data.append('upload_preset','hotel_unsigned');
+        fetch('https://api.cloudinary.com/v1_1/nxsbcchx/image/upload',{method:'POST',body:data})
+                .then(function(response){
+                  if(!response.ok)throw new Error('Cloudinary upload failed');
+                  return response.json();
+                })
+                .then(function(result){
+                  if(!result.secure_url)throw new Error('Cloudinary response did not include secure_url');
+                  images.push(result.secure_url);
+                  renderPreview();
+                })
+                .catch(function(){ App.toast('Photo upload failed. Please try again.','warning'); });
+      });
+      this.value='';
+    });
+
+    if(editing){
+      set('rNum',editing.number); set('rName',editing.name); set('rType',editing.type); set('rPrice',editing.price); set('rDisc',editing.discount||0); set('rStatus',editing.status);
+      set('rDesc',editing.desc); set('rCap',editing.capacity); set('rBed',editing.beds); set('rSize',editing.size); set('rFloor',editing.floor); set('rView',editing.view); set('rRating',editing.rating);
+      document.getElementById('rFeat').checked=!!editing.featured;
+      document.getElementById('rPet').checked=!!editing.petFriendly;
+      amenEl.querySelectorAll('input').forEach(function(c){ if(editing.amenities.indexOf(c.value)>-1)c.checked=true; });
+      images=editing.images.slice();
+      renderPreview();
+    }
+    function set(id2,v){ document.getElementById(id2).value=v==null?'':v; }
+
+    document.getElementById('roomForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      App.clearErrors(this);
+      var amens=[]; amenEl.querySelectorAll('input:checked').forEach(function(c){amens.push(c.value);});
+      var ok=App.fieldErrors([
+        {id:'rNum',req:true},{id:'rName',req:true},
+        {id:'rPrice',req:true,pattern:/^\d+(\.\d+)?$/},
+        {id:'rCap',req:true,pattern:/^\d+$/},
+        {id:'rSize',req:true,pattern:/^\d+$/}
+      ]);
+      if(!ok){ App.toast('Please fix the highlighted fields.','warning'); return; }
+      if(!images.length){ App.toast('Add at least one photo.','warning'); return; }
+      var btn=document.getElementById('saveBtn'); btn.classList.add('loading'); btn.disabled=true;
+
+      // Room.beds is a count in the database, but this field has always been a
+      // free-text description here (e.g. "1 King Bed") - pull the number out of
+      // it rather than changing the field, so nothing about the form is removed.
+      var bedText=document.getElementById('rBed').value.trim()||'1 Queen Bed';
+      var bedMatch=bedText.match(/\d+/);
+      var bedsCount=bedMatch?+bedMatch[0]:(+document.getElementById('rCap').value||1);
+
+      var form=document.createElement('form');
+      form.method='POST'; form.action='/admin/room-form'; form.style.display='none';
+      function addField(name,value){ var i=document.createElement('input'); i.type='hidden'; i.name=name; i.value=value; form.appendChild(i); }
+      if(editing) addField('id',editing.id);
+      addField('number',document.getElementById('rNum').value.trim());
+      addField('name',document.getElementById('rName').value.trim());
+      addField('type',document.getElementById('rType').value.toUpperCase());
+      addField('description',document.getElementById('rDesc').value.trim()||'A beautifully appointed room.');
+      addField('price',document.getElementById('rPrice').value);
+      addField('discount',document.getElementById('rDisc').value||0);
+      addField('capacity',document.getElementById('rCap').value);
+      addField('beds',bedsCount);
+      addField('size',document.getElementById('rSize').value);
+      addField('floor',document.getElementById('rFloor').value||1);
+      addField('view',document.getElementById('rView').value.trim()||'Garden View');
+      addField('rating',document.getElementById('rRating').value||4.5);
+      addField('reviews',editing?(editing.reviews||0):0);
+      addField('featured',document.getElementById('rFeat').checked);
+      addField('petFriendly',document.getElementById('rPet').checked);
+      amens.forEach(function(a){ addField('amenities',a); });
+      images.slice(0,5).forEach(function(img){ addField('images',img); });
+      addField('status',document.getElementById('rStatus').value.toUpperCase());
+      document.body.appendChild(form);
+      App.toast(editing?'Saving changes...':'Adding room...');
+      form.submit();
+    });
+  })();
+</script>
+</body>
+</html>

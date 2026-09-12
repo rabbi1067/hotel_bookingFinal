@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Create account | Grand Meridian Resort</title>
+  <style>
+    .auth-page{min-height:100vh}
+    .auth-error{margin-bottom:1rem}
+  </style>
+</head>
+<body class="auth-page">
+<nav class="site-bar" data-site-nav></nav>
+<div class="auth-wrap">
+  <div class="auth-side">
+    <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1100&q=70" alt="Grand Meridian suite" onerror="this.style.display='none'">
+    <div class="veil"></div>
+    <div class="content">
+      <div class="quote">&ldquo;Sign up today &mdash; your next escape is a booking away.&rdquo;</div>
+      <div class="mini">Member perks include member-only rates, priority room upgrades and express check-in.</div>
+    </div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-box">
+      <div class="as-head">
+        <a th:href="@{/}" class="logo" style="margin-bottom:1.3rem;display:inline-flex"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M20.2 2.8a6 6 0 0 0-8.5 0L5 9.5V19h9.5l6.7-6.7a6 6 0 0 0-1-9.5z"/><path d="M16 8 2 22M17.5 15H9"/></svg></span><span>Grand Meridian Resort<i class="brand-small" style="display:block;font-size:.6rem;font-weight:700;letter-spacing:.26em;color:var(--accent);font-family:var(--font);text-transform:uppercase;font-style:normal">Resort &amp; Spa</i></span></a>
+        <h1>Create your account</h1>
+        <p class="as-sub">Registration is open to hotel guests. Staff and admin accounts are created by the Super Admin from inside the system.</p>
+      </div>
+
+      <form th:action="@{/register}" th:object="${registerForm}" method="post" novalidate>
+        <div class="alert alert-danger auth-error" th:if="${#fields.hasErrors('*')}" role="alert">
+          Please fix the highlighted fields below.
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('name')} ? 'show-err'">
+          <label for="name">Full name</label>
+          <div class="input-affix"><span data-icon="user"></span>
+            <input class="input" type="text" id="name" th:field="*{name}" placeholder="e.g. Fazley Rabbi" autocomplete="name" required minlength="2" maxlength="80">
+          </div>
+          <div class="err" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('email')} ? 'show-err'">
+          <label for="email">Email address</label>
+          <div class="input-affix"><span data-icon="mail"></span>
+            <input class="input" type="email" id="email" th:field="*{email}" placeholder="you@example.com" autocomplete="email" required>
+          </div>
+          <div class="err" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('phone')} ? 'show-err'">
+          <label for="phone">Phone number</label>
+          <div class="input-affix"><span data-icon="phone"></span>
+            <input class="input" type="tel" id="phone" th:field="*{phone}" placeholder="+880 1XXX XXXXXX" autocomplete="tel" required minlength="7" maxlength="20">
+          </div>
+          <div class="err" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+        </div>
+
+        <div class="field" th:classappend="${#fields.hasErrors('address')} ? 'show-err'">
+          <label for="address">Address</label>
+          <div class="input-affix"><span data-icon="pin"></span>
+            <input class="input" type="text" id="address" th:field="*{address}" placeholder="House, road, city" autocomplete="street-address" required maxlength="255">
+          </div>
+          <div class="err" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+        </div>
+
+        <div class="field">
+          <label>Gender <span class="text-muted" style="font-weight:400">(optional)</span></label>
+          <div class="row" style="gap:1.4rem">
+            <label class="check" style="font-weight:500">
+              <input type="radio" th:field="*{gender}" th:value="MALE"> <span>Male</span>
+            </label>
+            <label class="check" style="font-weight:500">
+              <input type="radio" th:field="*{gender}" th:value="FEMALE"> <span>Female</span>
+            </label>
+            <label class="check" style="font-weight:500">
+              <input type="radio" th:field="*{gender}" th:value="OTHER"> <span>Other</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="field" th:classappend="${#fields.hasErrors('password')} ? 'show-err'">
+            <label for="password">Password</label>
+            <div class="input-affix right pass-row"><span data-icon="lock"></span>
+              <input class="input" type="password" id="password" th:field="*{password}" placeholder="Min 6 characters" autocomplete="new-password" required minlength="6">
+            </div>
+            <div class="err" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+          </div>
+          <div class="field">
+            <label for="password2">Confirm password</label>
+            <div class="input-affix right pass-row"><span data-icon="lock"></span>
+              <input class="input" type="password" id="password2" placeholder="Repeat password" autocomplete="new-password" required>
+            </div>
+            <div class="err">Passwords do not match.</div>
+          </div>
+        </div>
+
+        <!-- Role is intentionally NOT part of this form.
+             The server always creates GUEST accounts from public registration.
+             Administrative roles can only be given by the Super Admin. -->
+
+        <label class="check mb-3">
+          <input type="checkbox" id="terms">
+          <span>I agree to the Terms of Service and Privacy Policy.</span>
+        </label>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="regBtn">Create account</button>
+      </form>
+
+      <p class="auth-foot">Already have an account? <a th:href="@{/login}">Sign in</a></p>
+    </div>
+  </div>
+</div>
+<script th:src="@{/js/core.js}"></script>
+<script>
+  App.boot({guard:'guest'});
+  document.getElementById('regBtn').addEventListener('click',function(e){
+    var form = this.closest('form');
+    if(!form.checkValidity()){
+      e.preventDefault();
+      form.reportValidity();
+      return;
+    }
+    var p1=document.getElementById('password'), p2=document.getElementById('password2');
+    if(p1.value!==p2.value){ e.preventDefault(); p2.closest('.field').classList.add('show-err'); return; }
+    var t=document.getElementById('terms');
+    if(!t.checked){ e.preventDefault(); App.toast('Please accept the terms to continue.','warning'); return; }
+  });
+</script>
+</body>
+</html>

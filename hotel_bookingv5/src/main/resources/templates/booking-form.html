@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${booking.id == null} ? 'New Booking · Haven' : 'Edit Booking · Haven'">Booking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/booking.css}">
+</head>
+<body>
+<div class="wrap">
+
+    <!-- ============ Top bar ============ -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="brand-mark"><span class="dot"></span> Haven Hotel</div>
+            <div>
+                <p class="topbar-title" style="font-size:20px;margin:0;"
+                   th:text="${booking.id == null} ? 'New booking' : 'Edit booking'">New booking</p>
+                <p class="topbar-sub">Enter the guest and stay details below. Fields marked * are required.</p>
+            </div>
+        </div>
+        <!-- Link out to the booking list scene + logout -->
+        <div class="topbar-right" style="display:flex; align-items:center; gap:10px;">
+            <a class="btn btn-ghost" th:href="@{/booking/list}">View booking list →</a>
+            <form th:action="@{/logout}" method="post" style="margin:0;">
+                <button type="submit" class="btn btn-ghost">Log out</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Shown only while editing an existing booking -->
+    <div class="mode-banner" th:if="${booking.id != null}">
+        <span>✎</span> Editing <b th:text="${booking.fullName}">Guest name</b> —
+        make your changes, then Update or Cancel.
+    </div>
+
+    <!-- ============ Form ============ -->
+    <form class="card" th:action="@{/booking/save}" th:object="${booking}" method="post">
+
+        <!-- hidden id keeps update vs. insert straight for the controller -->
+        <input type="hidden" th:field="*{id}">
+        <div class="section-head">
+            <div class="badge">01</div>
+            <div>
+                <h2>Guest information</h2>
+                <p>Personal and passport details</p>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="fullName">Full name *</label>
+                <input id="fullName" th:field="*{fullName}" th:errorclass="input-error" required placeholder="Example: Ayesha Rahman">
+                <span class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}">Error</span>
+            </div>
+            <div class="field">
+                <label for="email">Email address *</label>
+                <input id="email" type="email" th:field="*{email}" th:errorclass="input-error" required placeholder="ayesha@example.com">
+                <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Error</span>
+            </div>
+            <div class="field">
+                <label for="mobile">Mobile number *</label>
+                <input id="mobile" th:field="*{mobile}" th:errorclass="input-error" required placeholder="+880 1712 345678">
+                <span class="field-error" th:if="${#fields.hasErrors('mobile')}" th:errors="*{mobile}">Error</span>
+            </div>
+            <div class="field">
+                <label for="country">Country *</label>
+                <input id="country" th:field="*{country}" th:errorclass="input-error" required placeholder="Bangladesh">
+                <span class="field-error" th:if="${#fields.hasErrors('country')}" th:errors="*{country}">Error</span>
+            </div>
+            <div class="field">
+                <label for="passport">Passport number *</label>
+                <input id="passport" th:field="*{passport}" th:errorclass="input-error" required placeholder="A01234567">
+                <span class="field-error" th:if="${#fields.hasErrors('passport')}" th:errors="*{passport}">Error</span>
+            </div>
+            <div class="field">
+                <label for="passportExpiry">Passport expiry date *</label>
+                <input id="passportExpiry" type="date" th:field="*{passportExpiry}" th:errorclass="input-error" required>
+                <span class="field-error" th:if="${#fields.hasErrors('passportExpiry')}" th:errors="*{passportExpiry}">Error</span>
+            </div>
+            <div class="field full">
+                <label for="specialRequests">Special requests <span class="opt">(optional)</span></label>
+                <textarea id="specialRequests" th:field="*{specialRequests}" th:errorclass="input-error" placeholder="Example: Sea view, extra bed, or late check-in"></textarea>
+                <span class="field-error" th:if="${#fields.hasErrors('specialRequests')}" th:errors="*{specialRequests}">Error</span>
+            </div>
+        </div>
+
+        <div class="stub-divider"><span class="snip"></span></div>
+
+        <div class="section-head">
+            <div class="badge">02</div>
+            <div>
+                <h2>Stay information</h2>
+                <p>Room, dates, amount, and payment</p>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="floor">Floor *</label>
+                <input id="floor" th:field="*{floor}" th:errorclass="input-error" required placeholder="3">
+                <span class="field-error" th:if="${#fields.hasErrors('floor')}" th:errors="*{floor}">Error</span>
+            </div>
+            <div class="field">
+                <label for="room">Room number *</label>
+                <input id="room" th:field="*{room}" th:errorclass="input-error" required placeholder="302">
+                <span class="field-error" th:if="${#fields.hasErrors('room')}" th:errors="*{room}">Error</span>
+            </div>
+            <div class="field full">
+                <label for="roomType">Room quality *</label>
+                <select id="roomType" th:field="*{roomType}" th:errorclass="input-error" required>
+                    <option value="" disabled>Select room quality</option>
+                    <option value="Standard" data-price="3500">Standard — ৳3,500 / night</option>
+                    <option value="Deluxe" data-price="5000">Deluxe — ৳5,000 / night</option>
+                    <option value="Superior" data-price="6500">Superior — ৳6,500 / night</option>
+                    <option value="Executive" data-price="9000">Executive — ৳9,000 / night</option>
+                    <option value="Presidential Suite" data-price="15000">Presidential Suite — ৳15,000 / night</option>
+                </select>
+                <span class="field-error" th:if="${#fields.hasErrors('roomType')}" th:errors="*{roomType}">Error</span>
+                <span class="hint">Amount below fills in automatically — you can still adjust it by hand.</span>
+            </div>
+            <div class="field">
+                <label for="checkin">Check-in date *</label>
+                <input id="checkin" type="date" th:field="*{checkin}" th:min="${today}" th:errorclass="input-error" required>
+                <span class="field-error" th:if="${#fields.hasErrors('checkin')}" th:errors="*{checkin}">Error</span>
+            </div>
+            <div class="field">
+                <label for="checkout">Check-out date *</label>
+                <input id="checkout" type="date" th:field="*{checkout}" th:min="${today}" th:errorclass="input-error" required>
+                <span class="field-error" th:if="${#fields.hasErrors('checkout')}" th:errors="*{checkout}">Error</span>
+            </div>
+            <div class="field">
+                <label>Days <span class="opt">(auto)</span></label>
+                <!-- getDays() is a transient computed getter on the Booking entity; JS refreshes this live on date/room changes -->
+                <input id="daysDisplay" disabled th:value="${booking.days != null} ? ${booking.days} + ' nights' : '—'">
+            </div>
+            <div class="field">
+                <label for="amount">Amount (৳) *</label>
+                <input id="amount" type="number" min="0" step="0.01" th:field="*{amount}" th:errorclass="input-error" required placeholder="6500">
+                <span class="field-error" th:if="${#fields.hasErrors('amount')}" th:errors="*{amount}">Error</span>
+            </div>
+            <div class="field">
+                <label for="paymentStatus">Payment status *</label>
+                <select id="paymentStatus" th:field="*{paymentStatus}" th:errorclass="input-error" required>
+                    <option value="" disabled>Select status</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Unpaid">Unpaid</option>
+                </select>
+                <span class="field-error" th:if="${#fields.hasErrors('paymentStatus')}" th:errors="*{paymentStatus}">Error</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <!-- Cancel: only in edit mode — discards changes, original row stays as-is -->
+            <a th:if="${booking.id != null}" class="btn btn-cancel" th:href="@{/booking/list}">Cancel</a>
+
+            <button type="submit" class="btn btn-primary" th:if="${booking.id == null}">Add booking</button>
+            <button type="submit" class="btn btn-update" th:if="${booking.id != null}">Update booking</button>
+        </div>
+    </form>
+
+</div>
+
+<script>
+    // Room quality -> amount auto-fill. Price is per night; multiplies by
+    // nights between check-in/check-out when both dates are picked.
+    const roomType   = document.getElementById('roomType');
+    const checkin    = document.getElementById('checkin');
+    const checkout   = document.getElementById('checkout');
+    const amount     = document.getElementById('amount');
+    const daysDisplay= document.getElementById('daysDisplay');
+
+    function nightsBetween(a, b){
+        if(!a || !b) return null;
+        const diff = Math.round((new Date(b) - new Date(a)) / 86400000);
+        return diff > 0 ? diff : null;
+    }
+
+    function recalcAmount(){
+        const opt = roomType.options[roomType.selectedIndex];
+        const price = opt ? Number(opt.dataset.price) : null;
+        if(!price) return;
+
+        const nights = nightsBetween(checkin.value, checkout.value);
+        daysDisplay.value = nights ? nights + ' nights' : '—';
+        amount.value = nights ? price * nights : price;
+    }
+
+    roomType.addEventListener('change', recalcAmount);
+    checkin.addEventListener('change', recalcAmount);
+    checkout.addEventListener('change', recalcAmount);
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>Check-ins | Staff</title>
+<style>
+.ops-badges{display:flex;gap:.6rem;flex-wrap:wrap}
+.live-badge{border-radius:99px;padding:.22rem .7rem;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.live-badge.upcoming{background:var(--primary-soft);color:var(--primary)}
+.live-badge.checkin{background:var(--accent-soft);color:var(--accent)}
+.live-badge.awaiting{background:var(--warning-soft);color:var(--warning)}
+.live-badge.staying{background:var(--success-soft);color:var(--success)}
+.live-badge.due{background:var(--danger-soft);color:var(--danger)}
+.live-badge.completed{background:var(--info-soft);color:var(--info)}
+</style>
+</head>
+
+<body data-chrome="dash" data-active="sci">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Front office</div><h2 style="font-family:var(--display)">Check-ins</h2><p>Guests arriving today and upcoming. Process their check-in when they arrive at the desk.</p></div>
+
+      <div class="toolbar">
+        <div class="input-affix" style="width:260px"><span data-icon="search"></span><input class="input" id="ciQ" placeholder="Search guest or room..."></div>
+        <select class="input" id="ciTab" style="width:auto"><option value="today">Arriving today</option><option value="upcoming">Upcoming</option><option value="all">All confirmed</option></select>
+      </div>
+      <div class="card"><div class="table-wrap" style="border:0;box-shadow:none;border-radius:0"><table class="tbl" id="ciTbl"></table></div></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+App.boot({guard:'staff'});
+App.renderDashChrome('sci','Check-ins',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Check-ins',href:'#'}]);
+(function(){
+  var st={q:'',tab:'today'};
+  function render(){
+    var all=App.getBookings().filter(function(b){ return b.status==='confirmed'||b.status==='pending'; });
+    var today=App.todayISO();
+    var res=all.filter(function(b){
+      var live=App.liveStay(b).state;
+      if(st.tab==='today'&&b.checkIn!==today)return false;
+      if(st.tab==='upcoming'&&b.checkIn<=today)return false;
+      if(st.tab==='all'&&b.checkIn<today&&live!=='AWAITING_CHECK_IN')return false;
+      if(st.q){ var hay=(b.guest+' '+b.roomName+' '+b.bookingId).toLowerCase(); if(hay.indexOf(st.q.toLowerCase())===-1)return false; }
+      return true;
+    }).sort(function(a,b){ return a.checkIn<b.checkIn?-1:1; });
+    var tbl=document.getElementById('ciTbl');
+    if(!res.length){ tbl.innerHTML='<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--muted)">No check-ins in this view.</td></tr>'; return; }
+    tbl.innerHTML='<thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Payment</th><th style="text-align:right">Action</th></tr></thead><tbody>'+
+    res.map(function(b){
+      var live=App.liveStay(b).state;
+      var badge=lb(live);
+      var act=live==='COMPLETED'
+        ?'<span class="badge b-info">Checked in &amp; stayed</span>'
+        :'<button class="btn btn-primary btn-sm" data-ok="'+b.id+'"><span data-icon="key" class="icon" style="width:14px;height:14px"></span> Check in</button>';
+      return '<tr><td class="primary-id">'+b.bookingId+'</td><td>'+App.esc(b.guest)+'</td><td>'+App.esc(b.roomName)+'</td>'+
+      '<td>'+App.fmtDate(b.checkIn)+'</td><td>'+App.fmtDate(b.checkOut)+'</td>'+
+      '<td><span class="badge '+(b.payment==='paid'?'b-success':'b-warning')+'">'+(b.payment==='paid'?'Paid':'Unpaid')+'</span></td>'+
+      '<td class="actions">'+act+' '+badge+'</td></tr>';
+    }).join('')+'</tbody>';
+    tbl.querySelectorAll('[data-ok]').forEach(function(btn){
+      btn.addEventListener('click',function(){ cin(btn.dataset.ok); });
+    });
+  }
+  function lb(state){
+    var map={UPCOMING:'upcoming',CHECK_IN_TODAY:'checkin',AWAITING_CHECK_IN:'awaiting',CHECKED_IN:'staying',CURRENT_STAY:'staying',CHECK_OUT_TODAY:'staying',CHECK_OUT_DUE:'due',COMPLETED:'completed'};
+    return '<span class="live-badge '+(map[state]||'checkin')+'">'+(map[state]||state).replace('_',' ').toUpperCase()+'</span>';
+  }
+  function cin(id){
+    var b=App.bookingById(id); if(!b)return;
+    var pay=(b.payment==='paid'?'<span class="badge b-success">Paid</span>':'<span class="badge b-warning">Unpaid</span>');
+    var m=App.openModal('<div class="modal"><div class="modal-head"><h3>Check in '+App.esc(b.guest)+'</h3><button class="modal-x">&times;</button></div><div class="modal-body">'+
+      '<div class="join-grid mb-3">'+
+      '<div class="join-cell"><div class="k">Guest</div><div class="v">'+App.esc(b.guest)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Room</div><div class="v">'+App.esc(b.roomName)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Check-in date</div><div class="v">'+App.fmtDate(b.checkIn)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Check-out date</div><div class="v">'+App.fmtDate(b.checkOut)+'</div></div>'+
+      '<div class="join-cell"><div class="k">Payment</div><div class="v">'+pay+'</div></div>'+
+      '</div>'+
+      '<p class="legal mb-2">Booking becomes <b>CHECKED IN</b>, room becomes <b>OCCUPIED</b>, actual check-in recorded as now.</p>'+
+      '<div class="modal-foot" style="padding:0"><button class="btn btn-ghost" data-c="1">Cancel</button><button class="btn btn-primary" data-y="1">Confirm check-in</button></div></div></div>');
+    m.q('[data-c]').addEventListener('click',function(){ m.close(); });
+    m.q('[data-y]').addEventListener('click',function(){
+      var form=document.createElement('form');
+      form.method='POST'; form.action='/admin/bookings/'+id+'/check-in'; form.style.display='none';
+      document.body.appendChild(form);
+      form.submit();
+    });
+  }
+  document.getElementById('ciQ').addEventListener('input',App.debounce(function(){ st.q=this.value; render(); },250));
+  document.getElementById('ciTab').addEventListener('change',function(){ st.tab=this.value; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
+
+

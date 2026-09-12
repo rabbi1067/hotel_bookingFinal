@@ -1,0 +1,227 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Money Receipts | Grand Meridian Resort</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .rcpt-scroll{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem}
+    .rcpt{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
+    .rcpt-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.9rem 1.1rem;border-bottom:1px dashed var(--border)}
+    .rcpt-head .h-name{font-weight:800}
+    .rcpt-head .h-rno{font-size:.7rem;color:var(--muted);letter-spacing:.06em}
+    .rcpt-body{padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.45rem;font-size:.86rem}
+    .rcpt-row{display:flex;justify-content:space-between;gap:1rem}
+    .rcpt-row .k{color:var(--muted)}
+    .rcpt-row .v{font-weight:650;text-align:right}
+    .rcpt-total{border-top:1px dashed var(--border);margin-top:.4rem;padding-top:.6rem}
+    .rcpt-foot{padding:0 1.1rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap}
+    .rcpt-toolbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1.2rem}
+    @media print{
+      body *{visibility:hidden}
+      #printArea,#printArea *{visibility:visible}
+      #printArea{position:absolute;left:0;top:0;width:100%}
+    }
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="umr">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Proof of payment</div><h2 style="font-family:var(--display)">Money receipts</h2><p>Official receipts for your paid and completed stays. Print or download any receipt.</p></div>
+
+      <div class="rcpt-toolbar">
+        <div class="input-affix" style="width:240px"><span data-icon="search"></span><input class="input" id="rcptQ" placeholder="Search receipts..."></div>
+      </div>
+      <div class="rcpt-scroll" id="rcptGrid"></div>
+      <div id="rcptPager" class="mt-3"></div>
+
+      <div id="printArea" class="hide"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('umr','Money Receipts',[{label:'Dashboard',href:'/user/dashboard'},{label:'Money Receipts',href:'#'}]);
+  (function(){
+    var cu=App.getCurrentUser();
+    var q='';
+    var PAGE_SIZE=8;
+    var page=1;
+    function eligible(){
+      // A receipt is proof of payment, not proof the stay finished - any
+      // paid booking of this guest's should show one, regardless of
+      // status (pending/confirmed/completed/active).
+      return App.getBookings().filter(function(b){ return b.userId===cu.id&&b.payment==='paid'; })
+              .sort(function(a,b){
+                var ta=new Date(a.checkOut).getTime();
+                var tb=new Date(b.checkOut).getTime();
+                if(isNaN(ta))ta=0;
+                if(isNaN(tb))tb=0;
+                return tb-ta; // descending - newest checkout first
+              });
+    }
+    function rno(b){ return 'MR-2026-'+String(Math.abs(hash(b.id))%1000000).padStart(6,'0'); }
+    function hash(s){ var h=0; for(var i=0;i<String(s).length;i++){h=(h*31+String(s).charCodeAt(i))>>>0;} return h; }
+    function rowHTML(b){
+      var r=App.roomById(b.roomId);
+      return '<div class="rcpt"><div class="rcpt-head"><div><div class="h-name">'+App.esc(App.getContents().hotelName)+'</div><div class="text-xs text-muted">Money Receipt</div></div><div class="text-right"><div class="h-rno">'+rno(b)+'</div><div class="text-xs text-muted">'+App.fmtDate(b.checkOut)+'</div></div></div>'+
+              '<div class="rcpt-body">'+
+              '<div class="rcpt-row"><span class="k">Booking ID</span><span class="v">'+b.bookingId+'</span></div>'+
+              '<div class="rcpt-row"><span class="k">Guest</span><span class="v">'+App.esc(b.guest)+'</span></div>'+
+              '<div class="rcpt-row"><span class="k">Room</span><span class="v">'+App.esc(b.roomName)+(r?' &middot; '+r.number:'')+'</span></div>'+
+              '<div class="rcpt-row"><span class="k">Stay</span><span class="v">'+App.fmtDate(b.checkIn)+' &rarr; '+App.fmtDate(b.checkOut)+'</span></div>'+
+              '<div class="rcpt-row"><span class="k">Room charges</span><span class="v">'+App.money(b.roomPrice*(b.nights||1))+'</span></div>'+
+              (b.servicesTotal?'<div class="rcpt-row"><span class="k">Services</span><span class="v">'+App.money(b.servicesTotal)+'</span></div>':'')+
+              (b.discountAmount?'<div class="rcpt-row" style="color:var(--success)"><span class="k">Discount'+(b.promoCode?' ('+b.promoCode+')':'')+'</span><span class="v">&minus; '+App.money(b.discountAmount)+'</span></div>':'')+
+              '<div class="rcpt-row"><span class="k">Taxes</span><span class="v">'+App.money(b.taxAmount)+'</span></div>'+
+              '</div>'+
+              '<div class="rcpt-body rcpt-total"><div class="rcpt-row"><span class="k strong">Total paid</span><span class="v strong" style="color:var(--success);font-size:1.05rem">'+App.money(b.totalAmount)+'</span></div>'+
+              '<div class="rcpt-row"><span class="k">Payment status</span><span class="v"><span class="badge b-success">Paid</span></span></div></div>'+
+              '<div class="rcpt-foot"><button class="btn btn-soft btn-sm" data-print="'+b.id+'"><span data-icon="printer" class="icon" style="width:14px;height:14px"></span> Print</button>'+
+              '<button class="btn btn-outline btn-sm" data-dl="'+b.id+'"><span data-icon="download" class="icon" style="width:14px;height:14px"></span> Download</button></div></div>';
+    }
+    function render(){
+      var list=eligible();
+      var grid=document.getElementById('rcptGrid');
+      var pager=document.getElementById('rcptPager');
+      if(q){ list=list.filter(function(b){ return (b.bookingId+' '+b.guest+' '+b.roomName).toLowerCase().indexOf(q.toLowerCase())>-1; }); }
+      if(!list.length){
+        grid.innerHTML=App.emptyState('printer','No receipts yet','Once a stay is paid, its official receipt will appear here.','<a class="btn btn-primary btn-sm" th:href="@{/user/payment-status}">View payments</a>');
+        pager.innerHTML='';
+        return;
+      }
+      var totalPages=Math.max(1,Math.ceil(list.length/PAGE_SIZE));
+      if(page>totalPages)page=totalPages;
+      var pageList=list.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+      grid.innerHTML=pageList.map(rowHTML).join('');
+      grid.querySelectorAll('[data-print]').forEach(function(b){ b.addEventListener('click',function(){ printReceipt(App.bookingById(b.dataset.print)); }); });
+      grid.querySelectorAll('[data-dl]').forEach(function(b){ b.addEventListener('click',function(){ downloadReceipt(App.bookingById(b.dataset.dl)); }); });
+      pager.innerHTML=App.pagination(page,totalPages);
+      App.initPager(pager,function(p){ page=p; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+    }
+
+    /*
+     * PDF generation for the Download button, via jsPDF (loaded from CDN
+     * in <head>). Builds the same content the printed/text receipt has,
+     * laid out as a simple single-column receipt on an A4 page.
+     */
+    function drawReceiptPdf(doc, b){
+      var r=App.roomById(b.roomId);
+      var pageWidth=doc.internal.pageSize.getWidth();
+      var marginX=18;
+      var y=22;
+
+      function line(){ doc.setDrawColor(200,200,200); doc.setLineDashPattern([1,1],0); doc.line(marginX,y,pageWidth-marginX,y); doc.setLineDashPattern([],0); y+=8; }
+      function row(label,value,opts){
+        opts=opts||{};
+        doc.setFont('helvetica', opts.bold?'bold':'normal');
+        doc.setFontSize(opts.size||10.5);
+        doc.setTextColor(opts.color?opts.color[0]:90, opts.color?opts.color[1]:90, opts.color?opts.color[2]:90);
+        doc.text(label, marginX, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(20,20,20);
+        doc.text(String(value), pageWidth-marginX, y, {align:'right'});
+        y+=7;
+      }
+
+      // Header
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(17);
+      doc.setTextColor(20,20,20);
+      doc.text(App.getContents().hotelName, marginX, y);
+      y+=6.5;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10);
+      doc.setTextColor(110,110,110);
+      doc.text('Money Receipt', marginX, y);
+      doc.setFont('helvetica','bold');
+      doc.text(rno(b), pageWidth-marginX, y, {align:'right'});
+      y+=3;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9);
+      doc.setTextColor(150,150,150);
+      doc.text('Issued '+App.fmtDate(b.checkOut), pageWidth-marginX, y+4, {align:'right'});
+      y+=10;
+      line();
+
+      row('Booking ID', b.bookingId);
+      row('Guest', b.guest);
+      row('Room', b.roomName+(r?' - '+r.number:''));
+      row('Stay', App.fmtDate(b.checkIn)+' -> '+App.fmtDate(b.checkOut));
+      y+=2; line();
+
+      row('Room charges', App.money(b.roomPrice*(b.nights||1)));
+      if(b.servicesTotal) row('Services', App.money(b.servicesTotal));
+      if(b.discountAmount) row('Discount'+(b.promoCode?' ('+b.promoCode+')':''), '- '+App.money(b.discountAmount), {color:[10,107,61]});
+      row('Taxes', App.money(b.taxAmount));
+      y+=2; line();
+
+      row('Total paid', App.money(b.totalAmount), {bold:true, size:13, color:[10,107,61]});
+      y+=1;
+      row('Payment status', 'PAID', {color:[10,107,61]});
+      y+=6; line();
+
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(9.5);
+      doc.setTextColor(120,120,120);
+      doc.text('Thank you for staying with '+App.getContents().hotelName+'.', marginX, y);
+    }
+    function downloadReceipt(b){
+      if(!b){ App.toast('Receipt not found.','error'); return; }
+      if(!window.jspdf || !window.jspdf.jsPDF){
+        App.toast('PDF generator failed to load. Check your connection and try again.','error');
+        return;
+      }
+      try{
+        var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+        drawReceiptPdf(doc, b);
+        doc.save(rno(b).replace('/','-')+'.pdf');
+        App.toast('Receipt downloaded.','success');
+      }catch(e){
+        App.toast('Could not generate the PDF. Please try again.','error');
+      }
+    }
+
+    function printReceipt(b){
+      if(!b){ App.toast('Receipt not found.','error'); return; }
+      var r=App.roomById(b.roomId);
+      var area=document.getElementById('printArea');
+      area.classList.remove('hide');
+      area.innerHTML='<div style="font-family:monospace;font-size:13px;line-height:1.5;padding:24px">'+
+              '<h2 style="margin:0 0 2px">'+App.esc(App.getContents().hotelName)+'</h2>'+
+              '<div style="color:#555;margin-bottom:10px">Money Receipt &bull; '+rno(b)+'</div>'+
+              '<hr style="border:0;border-top:1px dashed #999">'+
+              '<div style="display:flex;justify-content:space-between;margin-top:8px"><span style="color:#555">Booking ID</span><b>'+b.bookingId+'</b></div>'+
+              '<div style="display:flex;justify-content:space-between"><span style="color:#555">Guest</span><b>'+App.esc(b.guest)+'</b></div>'+
+              '<div style="display:flex;justify-content:space-between"><span style="color:#555">Room</span><b>'+App.esc(b.roomName)+(r?' &middot; '+r.number:'')+'</b></div>'+
+              '<div style="display:flex;justify-content:space-between"><span style="color:#555">Stay</span><b>'+App.fmtDate(b.checkIn)+' &rarr; '+App.fmtDate(b.checkOut)+'</b></div>'+
+              '<hr style="border:0;border-top:1px dashed #999">'+
+              '<div style="display:flex;justify-content:space-between;margin-top:8px"><span style="color:#555">Room charges</span><b>'+App.money(b.roomPrice*(b.nights||1))+'</b></div>'+
+              (b.servicesTotal?'<div style="display:flex;justify-content:space-between"><span style="color:#555">Services</span><b>'+App.money(b.servicesTotal)+'</b></div>':'')+
+              (b.discountAmount?'<div style="display:flex;justify-content:space-between;color:#0a6b3d"><span>Discount</span><b>&minus; '+App.money(b.discountAmount)+'</b></div>':'')+
+              '<div style="display:flex;justify-content:space-between"><span style="color:#555">Taxes</span><b>'+App.money(b.taxAmount)+'</b></div>'+
+              '<hr style="border:0;border-top:1px dashed #999">'+
+              '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-top:8px"><span>Total paid</span><span>'+App.money(b.totalAmount)+'</span></div>'+
+              '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:#555">Payment status</span><b>PAID</b></div>'+
+              '<div style="margin-top:16px;color:#555">Thank you for staying with Grand Meridian Resort.</div></div>';
+      window.print();
+      setTimeout(function(){ area.classList.add('hide'); area.innerHTML=''; },400);
+    }
+    document.getElementById('rcptQ').addEventListener('input',App.debounce(function(){ q=this.value; page=1; render(); },250));
+    render();
+  })();
+</script>
+</body>
+</html>

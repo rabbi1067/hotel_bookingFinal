@@ -1,0 +1,327 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Content Management | Admin</title>
+  <style>
+    .cm-note{background:var(--primary-soft);border:1px dashed var(--primary);color:var(--primary);border-radius:10px;padding:.7rem 1rem;font-size:.82rem;margin-bottom:1.2rem}
+    .cm-sec{display:block;font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:1.1rem 0 .45rem}
+    .cm-hint{font-size:.74rem;color:var(--muted);margin-top:.2rem}
+    .cm-pane{display:none}
+    .cm-pane.active{display:block}
+    .cm-actions{display:flex;justify-content:flex-end;align-items:center;gap:.8rem;margin-top:1rem}
+    .cm-success{background:var(--success-soft);border:1px solid var(--success);color:var(--success);border-radius:10px;padding:.7rem 1rem;font-size:.85rem;margin-bottom:1rem}
+    .cm-error{background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:.7rem 1rem;font-size:.85rem;margin-bottom:1rem}
+    .cm-toast{position:fixed;right:24px;top:82px;z-index:1200;display:flex;align-items:center;min-width:290px;max-width:380px;padding:.85rem 1rem;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:13px;box-shadow:var(--shadow-lg);animation:cmToastIn .28s ease-out}
+    .cm-toast[hidden]{display:none!important}
+    .cm-toast.hide{animation:cmToastOut .25s ease-in forwards}
+    .cm-toast-copy{min-width:0;flex:1}
+    .cm-toast-message{font-size:.84rem;color:var(--success);font-weight:650}
+    .cm-toast-close{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem}
+    @keyframes cmToastIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+    @keyframes cmToastOut{to{opacity:0;transform:translateY(12px) scale(.97)}}
+    body[data-chrome="dash"] .app main .page-wrap{width:100% !important;max-width:none !important;padding-left:clamp(1rem,3vw,3rem);padding-right:clamp(1rem,3vw,3rem);box-sizing:border-box}
+    @media(max-width:640px){.tabbar{overflow-x:auto;justify-content:flex-start}.tabbar button{white-space:nowrap}.cm-actions{justify-content:stretch}.cm-actions button{width:100%}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ac">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+
+  <main>
+    <div class="page-wrap" style="max-width:1100px">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0">
+          <div class="eyebrow">Site copy</div>
+          <h2 style="font-family:var(--display)">Content &amp; messaging</h2>
+          <p>Manage the text displayed on the public Home, About and Contact pages.</p>
+        </div>
+      </div>
+
+      <div class="cm-note">
+        Edit any tab and click the single Save changes button below. Empty values are saved as empty values; demo text will not be restored.
+      </div>
+
+      <div th:if="${errorMessage}" class="cm-error" role="alert" th:text="${errorMessage}">
+        Unable to update content.
+      </div>
+
+      <div id="cmSuccessToast" class="cm-toast" role="status" aria-live="polite" hidden>
+        <div class="cm-toast-copy">
+          <div class="cm-toast-message">Content updated successfully.</div>
+        </div>
+        <button class="cm-toast-close" id="cmToastClose" type="button" aria-label="Close notification">&times;</button>
+      </div>
+
+      <form id="cmForm"
+            th:action="@{/admin/content-management}"
+            th:object="${contentForm}"
+            method="post">
+
+        <div class="tabbar" id="tabs">
+          <button type="button" class="on" data-tab="home">Home page</button>
+          <button type="button" data-tab="about">About us</button>
+          <button type="button" data-tab="contact">Contact &amp; support</button>
+          <button type="button" data-tab="socials">Social links</button>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+
+            <!-- Home fields. Shared About, stats and footer fields are intentionally not duplicated here. -->
+            <section class="cm-pane active" data-pane="home">
+              <span class="cm-sec">Brand</span>
+
+              <div class="field">
+                <label for="hotelName">Hotel name</label>
+                <input class="input" id="hotelName" type="text" th:field="*{hotelName}" maxlength="150">
+                <div class="cm-hint">Shown in the navbar, footer and browser title.</div>
+              </div>
+
+              <div class="field">
+                <label for="tagline">Tagline</label>
+                <input class="input" id="tagline" type="text" th:field="*{tagline}" maxlength="255">
+                <div class="cm-hint">Short brand line used across the public site.</div>
+              </div>
+
+              <span class="cm-sec">Hero banner</span>
+
+              <div class="field">
+                <label for="heroTitle">Hero title</label>
+                <input class="input" id="heroTitle" type="text" th:field="*{heroTitle}" maxlength="255">
+              </div>
+
+              <div class="field">
+                <label for="heroSub">Hero subtitle</label>
+                <textarea class="input" id="heroSub" th:field="*{heroSub}" rows="4" maxlength="2000"></textarea>
+              </div>
+
+              <div class="field">
+                <label for="heroBtn">Primary button label</label>
+                <input class="input" id="heroBtn" type="text" th:field="*{heroBtn}" maxlength="100">
+                <div class="cm-hint">Label of the main Explore Rooms button.</div>
+              </div>
+
+              <div class="cm-note">
+                About text, highlights, statistics and footer text are managed from the About us tab.
+              </div>
+            </section>
+
+            <!-- About fields appear only once in the form. -->
+            <section class="cm-pane" data-pane="about">
+              <span class="cm-sec">About page</span>
+
+              <div class="field">
+                <label for="aboutTitle">About title</label>
+                <input class="input" id="aboutTitle" type="text" th:field="*{aboutTitle}" maxlength="255">
+              </div>
+
+              <div class="field">
+                <label for="aboutText">About body</label>
+                <textarea class="input" id="aboutText" th:field="*{aboutText}" rows="7" maxlength="5000"></textarea>
+              </div>
+
+              <div class="field">
+                <label for="aboutPoints">About highlights</label>
+                <textarea class="input" id="aboutPoints" th:field="*{aboutPoints}" rows="6" maxlength="2000"></textarea>
+                <div class="cm-hint">One highlight per line. Delete all lines to remove all highlights.</div>
+              </div>
+
+              <span class="cm-sec">Stats band</span>
+
+              <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+                <div class="field">
+                  <label for="roomsValue">Rooms — value</label>
+                  <input class="input" id="roomsValue" type="text" th:field="*{roomsValue}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="roomsLabel">Rooms — label</label>
+                  <input class="input" id="roomsLabel" type="text" th:field="*{roomsLabel}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="guestsValue">Guests — value</label>
+                  <input class="input" id="guestsValue" type="text" th:field="*{guestsValue}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="guestsLabel">Guests — label</label>
+                  <input class="input" id="guestsLabel" type="text" th:field="*{guestsLabel}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="yearsValue">Years — value</label>
+                  <input class="input" id="yearsValue" type="text" th:field="*{yearsValue}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="yearsLabel">Years — label</label>
+                  <input class="input" id="yearsLabel" type="text" th:field="*{yearsLabel}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="ratingValue">Rating — value</label>
+                  <input class="input" id="ratingValue" type="text" th:field="*{ratingValue}" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="ratingLabel">Rating — label</label>
+                  <input class="input" id="ratingLabel" type="text" th:field="*{ratingLabel}" maxlength="100">
+                </div>
+              </div>
+
+              <span class="cm-sec">Footer</span>
+
+              <div class="field">
+                <label for="footerAbout">Footer blurb</label>
+                <textarea class="input" id="footerAbout" th:field="*{footerAbout}" rows="4" maxlength="3000"></textarea>
+              </div>
+            </section>
+
+            <section class="cm-pane" data-pane="contact">
+              <span class="cm-sec">Primary contact</span>
+
+              <div class="field">
+                <label for="address">Address</label>
+                <input class="input" id="address" type="text" th:field="*{address}" maxlength="255">
+                <div class="cm-hint">Used on the home location card and Contact page.</div>
+              </div>
+
+              <div class="field">
+                <label for="phone">Phone</label>
+                <input class="input" id="phone" type="text" th:field="*{phone}" maxlength="100">
+              </div>
+
+              <div class="field">
+                <label for="email">Email</label>
+                <input class="input" id="email" type="email" th:field="*{email}" maxlength="150">
+                <div class="cm-hint">Main guest email used in contact cards and mailto links.</div>
+              </div>
+
+              <span class="cm-sec">Front desk &amp; support</span>
+
+              <div class="field">
+                <label for="supportHours">Support hours</label>
+                <input class="input" id="supportHours" type="text" th:field="*{supportHours}" maxlength="150">
+              </div>
+
+              <span class="cm-sec">Map</span>
+
+              <div class="grid" style="grid-template-columns:1fr 1fr">
+                <div class="field">
+                  <label for="latitude">Latitude</label>
+                  <input class="input" id="latitude" type="text" th:field="*{latitude}" maxlength="50">
+                </div>
+                <div class="field">
+                  <label for="longitude">Longitude</label>
+                  <input class="input" id="longitude" type="text" th:field="*{longitude}" maxlength="50">
+                </div>
+              </div>
+            </section>
+
+            <section class="cm-pane" data-pane="socials">
+              <span class="cm-sec">Social links</span>
+
+              <div class="field">
+                <label for="facebookUrl">Facebook URL</label>
+                <input class="input" id="facebookUrl" type="url" th:field="*{facebookUrl}" maxlength="500">
+              </div>
+
+              <div class="field">
+                <label for="instagramUrl">Instagram URL</label>
+                <input class="input" id="instagramUrl" type="url" th:field="*{instagramUrl}" maxlength="500">
+              </div>
+
+              <div class="field">
+                <label for="twitterUrl">X (Twitter) URL</label>
+                <input class="input" id="twitterUrl" type="url" th:field="*{twitterUrl}" maxlength="500">
+              </div>
+
+              <div class="field">
+                <label for="youtubeUrl">YouTube URL</label>
+                <input class="input" id="youtubeUrl" type="url" th:field="*{youtubeUrl}" maxlength="500">
+              </div>
+            </section>
+
+          </div>
+        </div>
+
+        <!-- There is intentionally one Save button for every tab. -->
+        <div class="cm-actions">
+          <button class="btn btn-primary btn-lg" type="submit">
+            Save changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script th:src="@{/js/core.js}"></script>
+<script>
+  App.boot({guard:'admin'});
+  App.renderDashChrome('ac','Content Management',[
+    {label:'Dashboard',href:'/admin/dashboard'},
+    {label:'Content',href:'#'}
+  ]);
+
+  (function(){
+    var tabs=document.getElementById('tabs');
+    var panes=document.querySelectorAll('[data-pane]');
+
+    function showSuccessToast(){
+      var toast=document.getElementById('cmSuccessToast');
+      if(!toast)return;
+      toast.hidden=false;
+      var timer=setTimeout(hideSuccessToast,3000);
+      var close=document.getElementById('cmToastClose');
+      if(close){
+        close.onclick=function(){
+          clearTimeout(timer);
+          hideSuccessToast();
+        };
+      }
+    }
+
+    function hideSuccessToast(){
+      var toast=document.getElementById('cmSuccessToast');
+      if(!toast||toast.hidden)return;
+      toast.classList.add('hide');
+      setTimeout(function(){
+        toast.hidden=true;
+        toast.classList.remove('hide');
+      },250);
+    }
+
+    if(new URLSearchParams(window.location.search).has('success')){
+      showSuccessToast();
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+
+    if(tabs){
+      tabs.addEventListener('click',function(event){
+        var button=event.target.closest('[data-tab]');
+        if(!button)return;
+
+        var tab=button.dataset.tab;
+
+        tabs.querySelectorAll('[data-tab]').forEach(function(item){
+          item.classList.toggle('on',item===button);
+        });
+
+        panes.forEach(function(pane){
+          pane.classList.toggle('active',pane.dataset.pane===tab);
+        });
+      });
+    }
+
+    var form=document.getElementById('cmForm');
+    if(form){
+      form.addEventListener('submit',function(){
+        var button=form.querySelector('button[type="submit"]');
+        if(button){
+          button.disabled=true;
+          button.classList.add('loading');
+        }
+      });
+    }
+  })();
+</script>
+</body>
+</html>

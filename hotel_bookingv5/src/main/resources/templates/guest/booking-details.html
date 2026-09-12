@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>Booking Details | Grand Meridian Resort</title>
+<style>
+.bd-layout{display:grid;grid-template-columns:1fr 360px;gap:1.5rem;align-items:start}
+.bd-hero{display:flex;gap:1.2rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;box-shadow:var(--shadow-sm);flex-wrap:wrap}
+.bd-hero img{width:170px;height:120px;object-fit:cover;border-radius:12px}
+.pay-total{background:linear-gradient(135deg,var(--primary),#083632);color:#fff;border-radius:var(--radius);padding:1.4rem;box-shadow:var(--shadow)}
+.pay-total .pt-label{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700}
+.pay-total .pt-val{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;font-family:var(--display)}
+@media (max-width:1024px){.bd-layout{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body data-chrome="dash" data-active="ub">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap" id="wrap">
+      <div id="body"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  window.__SERVER_WIFI__ = /*[[${wifiForJs}]]*/ null;
+  /*]]>*/
+  /*[# th:if="${bookingActionMsg} != null"]*/
+  window.__BOOKING_FLASH__ = {msg:'[[${bookingActionMsg}]]', ok:[[${bookingActionOk}]]};
+  /*[/]*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+App.boot({guard:'user'});
+(function(){
+  if(window.__BOOKING_FLASH__){ App.toast(window.__BOOKING_FLASH__.msg, window.__BOOKING_FLASH__.ok?'success':'error'); }
+  var id=new URLSearchParams(location.search).get('id');
+  var b=App.bookingById(id);
+  var body=document.getElementById('body');
+  if(!b||b.userId!==App.getCurrentUser().id){
+    body.innerHTML=App.emptyState('bookmark','Booking not found','We couldn\u2019t find that booking.','<a class="btn btn-primary btn-sm" th:href="@{/user/my-bookings}">Back to bookings</a>');
+    App.renderDashChrome('ub','Booking Details',[{label:'Dashboard',href:'/user/dashboard'},{label:'My Bookings',href:'/user/my-bookings'},{label:b?b.bookingId:'Booking',href:'#'}]);
+    return;
+  }
+  App.renderDashChrome('ub','Booking Details',[{label:'Dashboard',href:'/user/dashboard'},{label:'My Bookings',href:'/user/my-bookings'},{label:b.bookingId,href:'#'}]);
+  var w=App.wifiForBooking(b);
+  var statusMap={confirmed:['b-primary','Confirmed'],active:['b-success','Active'],completed:['b-info','Completed'],pending:['b-warning','Pending'],cancelled:['b-danger','Cancelled']};
+  var st=statusMap[b.status];
+  body.innerHTML=
+    '<div class="bd-hero"><img src="'+b.roomImage+'" alt="" onerror="this.style.background=\'#0d3a36\'">'+
+    '<div class="grow"><div class="primary-id" style="font-size:1rem">'+b.bookingId+'</div>'+
+    '<h2 style="font-family:var(--display);margin:.25rem 0 .2rem">'+App.esc(b.roomName)+'</h2>'+
+    '<div class="text-sm" style="color:var(--muted)">'+App.esc(b.roomType)+' &bull; Booked '+App.fmtDate(b.createdAt)+'</div>'+
+    '<div class="row mt-2" style="gap:.4rem"><span class="badge '+st[0]+'">'+st[1]+'</span><span class="badge '+(b.payment==='paid'?'b-success':'b-warning')+'">'+(b.payment==='paid'?'Paid':'Unpaid')+'</span></div></div>'+
+    '<div class="pay-total"><div class="pt-label">Total amount</div><div class="pt-val">'+App.money(b.totalAmount)+'</div></div></div>'+
+
+    '<div class="bd-layout mt-3">'+
+    '<div>'+
+    '<div class="card mb-3"><div class="card-head"><h3>Stay details</h3><a class="text-sm strong" th:href="@{/user/my-bookings}">All bookings</a></div><div class="card-body"><div class="join-grid">'+
+    cell('Check-in',App.fmtDate(b.checkIn))+'<div class="join-cell"><div class="k">Check-in time</div><div class="v">3:00 PM</div></div>'+
+    cell('Check-out',App.fmtDate(b.checkOut))+'<div class="join-cell"><div class="k">Check-out time</div><div class="v">12:00 PM</div></div>'+
+    cell('Guests',b.adults+' adults'+(b.children?' + '+b.children+' child':''))+'<div class="join-cell"><div class="k">Pets</div><div class="v">'+(b.pets?'Yes':'No')+'</div></div>'+
+    cell('Nights',b.nights)+'<div class="join-cell"><div class="k">Rooms</div><div class="v">1</div></div>'+'</div></div></div>'+
+
+    '<div class="card mb-3"><div class="card-head"><h3>Guest information</h3></div><div class="card-body">'+
+    '<div class="row mb-2"><span class="ico ico-primary" style="width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center">'+App.avatarHTML(App.getCurrentUser(),'avatar sm')+'</span><div><div class="strong">'+App.esc(b.guest)+'</div><div class="text-sm" style="color:var(--muted)">'+(b.contact&&b.contact.email?App.esc(b.contact.email):'')+'</div></div></div>'+
+    (b.contact&&b.contact.request?'<p class="text-sm" style="color:var(--muted)"><b>Special request:</b> '+App.esc(b.contact.request)+'</p>':'')+'</div></div>'+
+
+    '<div class="card mb-3"><div class="card-head"><h3>WiFi for this stay</h3></div><div class="card-body"><div class="row between" style="padding:.4rem 0"><span class="text-sm" style="color:var(--muted)">Network (SSID)</span><b>'+App.esc(w.ssid)+'</b></div>'+
+    '<div class="row between" style="padding:.4rem 0"><span class="text-sm" style="color:var(--muted)">Password</span><b id="wPass" style="letter-spacing:.12em">'+(b.payment==='unpaid'?'&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;':'&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;')+'</b></div>'+
+    '<div class="row" style="gap:.5rem;margin-top:.4rem"><button class="btn btn-soft btn-sm" data-showpass>Show password</button><a class="btn btn-outline btn-sm" th:href="@{/user/wifi}">WiFi page</a></div>'+
+    (b.payment==='unpaid'?'<p class="legal mt-2">WiFi password unlocks once your stay is marked <b>Paid</b>.</p>':'<p class="legal mt-2">'+App.esc(w.instructions)+'</p>')+'</div></div>'+
+
+    '<div class="card"><div class="card-head"><h3>Price summary</h3></div><div class="card-body">'+
+    '<div class="sum-row"><span class="k">'+b.nights+' night&times; '+App.money(b.roomPrice)+'</span><span class="v">'+App.money(b.nights*b.roomPrice)+'</span></div>'+
+    (b.discountAmount?'<div class="sum-row" style="color:var(--success)"><span class="k">Discount'+(b.promoCode?' ('+b.promoCode+')':'')+'</span><span class="v">&minus; '+App.money(b.discountAmount)+'</span></div>':'')+
+    (b.servicesTotal?'<div class="sum-row"><span class="k">Additional services</span><span class="v">'+App.money(b.servicesTotal)+'</span></div>':'')+
+    '<div class="sum-row"><span class="k">Taxes &amp; fees</span><span class="v">'+App.money(b.taxAmount)+'</span></div>'+
+    '<div class="sum-total"><span class="k">Total</span><span class="v">'+App.money(b.totalAmount)+'</span></div></div></div>'+
+    '</div>'+
+
+    '<aside>'+
+    '<div class="card card-pad mb-3"><h3 class="mb-2" style="font-size:1rem">Booking actions</h3>'+
+    '<button class="btn btn-outline btn-block mb-1" onclick="window.print()"><span data-icon="printer"></span> Print booking</button>'+
+    '<a class="btn btn-outline btn-block mb-1" href="/user/bookings/'+b.id+'/invoice"><span data-icon="download"></span> Download invoice</a>'+
+    '<a class="btn btn-outline btn-block mb-1" '+(b.payment==='paid'?'':'href="/user/checkout?bookingId='+b.id+'"')+'><span data-icon="card"></span> '+(b.payment==='paid'?'Paid':'Pay now')+'</a>'+
+    (b.status==='confirmed'||b.status==='pending'?'<button class="btn btn-danger btn-block mb-1" data-cancel><span data-icon="x"></span> Cancel booking</button>':'')+
+    '<button class="btn btn-soft btn-block" data-orderfood><span data-icon="utensils"></span> Order food</button></div>'+
+    '<div class="wifi-card"><div class="wc-label"><span data-icon="wifi"></span> Room WiFi</div><div class="wc-ssid">'+App.esc(w.ssid)+'</div>'+
+    '<div class="wifi-row"><span class="k">Password</span><span class="v" style="letter-spacing:.1em">'+App.esc(maskPw(w.password))+'</span></div>'+
+    '<div class="wifi-row"><span class="k">Scope</span><span class="v" style="letter-spacing:0">'+App.esc(w.label)+'</span></div></div>'+
+    '</aside></div>';
+  function cell(k,v){ return '<div class="join-cell"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+  function maskPw(p){ return String(p||'').replace(/./g,'\u2022'); }
+
+  var shown=false;
+  document.querySelector('[data-showpass]').addEventListener('click',function(){
+    var b2=App.bookingById(b.id);
+    shown=!shown;
+    document.getElementById('wPass').textContent=shown?b2.payment==='unpaid'?'&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;':w.password:maskPw('');
+    if(shown&&b2.payment==='unpaid'){ App.toast('Complete payment to unlock the WiFi password.','warning'); shown=false; document.getElementById('wPass').textContent=maskPw(''); }
+    this.textContent=shown?'Hide password':'Show password';
+  });
+  document.querySelector('[data-cancel]').addEventListener('click',function(){
+    App.openConfirm('Cancel this booking?','The booking '+b.bookingId+' will be cancelled. This cannot be undone.').then(function(ok){
+      if(!ok)return;
+      var form=document.createElement('form');
+      form.method='POST'; form.action='/user/bookings/'+b.id+'/cancel'; form.style.display='none';
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+  document.querySelector('[data-orderfood]').addEventListener('click',function(){ location.href='/user/food-services'; });
+  App.toast('Welcome back to your booking.','info');
+})();
+</script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,335 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>User Management | Admin</title>
+  <style>
+    .us-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.2rem}
+    main[data-view]{display:none}
+    .block-cell{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;min-height:34px}
+    .block-cell input{width:58px;height:34px;padding:.4rem .5rem;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:var(--font);font-size:.82rem;text-align:center;box-sizing:border-box}
+    .block-cell .btn{height:34px}
+    .block-tag{font-size:.72rem;font-weight:700;color:var(--danger);background:var(--danger-soft);padding:.2rem .5rem;border-radius:20px;white-space:nowrap}
+    .back-link{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted);font-size:.85rem;font-weight:600;margin-bottom:1rem;cursor:pointer}
+    .back-link:hover{color:var(--primary)}
+    .edit-page,.delete-page{max-width:640px}
+    .delete-page .warn-box{background:var(--danger-soft);border:1px solid rgba(192,57,43,.25);border-radius:12px;padding:1.1rem;margin:1.2rem 0}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="au">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+
+  <!-- ===================== LIST VIEW ===================== -->
+  <main data-view="list">
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Guest directory</div><h2 style="font-family:var(--display)">Guests</h2><p>Every guest account - self-registered or added by front desk.</p></div>
+        <button class="btn btn-primary" id="addUser"><span data-icon="plus" class="icon" style="width:16px;height:16px"></span> Add guest</button>
+      </div>
+
+      <div class="us-stats" id="usStats"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="row" style="gap:.6rem;flex-wrap:wrap;width:100%">
+            <div class="input-affix" style="width:260px"><span data-icon="search"></span><input class="input" id="usSearch" placeholder="Search by name, email or phone..."></div>
+            <select class="input" id="usStatus" style="width:auto"><option value="">All statuses</option><option>active</option><option>inactive</option><option>blocked</option></select>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:0;box-shadow:none;border-radius:0"><table class="tbl" id="usTable"></table></div>
+        <div id="usPager"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== EDIT "PAGE" (same file, shown/hidden by JS) ===================== -->
+  <main data-view="edit">
+    <div class="page-wrap">
+      <div class="edit-page">
+        <span class="back-link" id="editBack">&larr; Back to guests</span>
+        <div class="section-title" style="margin:0 0 1.2rem"><div class="eyebrow">Edit guest</div><h2 style="font-family:var(--display)" id="editTitle">Edit guest</h2></div>
+        <div class="card"><div class="card-body">
+          <div class="grid" style="gap:1rem">
+            <div class="field"><label>Full name</label><input class="input" id="eName"></div>
+            <div class="field"><label>Email</label><input class="input" id="eEmail" type="email" disabled style="opacity:.75;cursor:not-allowed"><p class="text-xs mt-1" style="color:var(--muted)">Pulled from the account and shown read-only - contact the guest to change their login email.</p></div>
+            <div class="row" style="gap:1rem">
+              <div class="field" style="flex:1"><label>Phone</label><input class="input" id="ePhone"></div>
+              <div class="field" style="flex:1"><label>Gender</label><input class="input" id="eGender" disabled style="opacity:.75;cursor:not-allowed"></div>
+            </div>
+            <div class="field"><label>Address</label><input class="input" id="eAddress"></div>
+            <div class="field"><label>Status</label>
+              <select class="input" id="eStatus"><option value="active">Active</option><option value="inactive">Inactive</option><option value="blocked">Blocked</option></select>
+            </div>
+          </div>
+          <div class="row mt-3" style="gap:.6rem;justify-content:flex-end">
+            <button class="btn btn-ghost" id="editCancel">Cancel</button>
+            <button class="btn btn-primary" id="editSave">Save changes</button>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== DELETE "PAGE" (same file, shown/hidden by JS) ===================== -->
+  <main data-view="delete">
+    <div class="page-wrap">
+      <div class="delete-page">
+        <span class="back-link" id="delBack">&larr; Back to guests</span>
+        <div class="section-title" style="margin:0"><div class="eyebrow">Remove account</div><h2 style="font-family:var(--display)">Delete guest</h2></div>
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:2rem 1.5rem 1.2rem">
+            <div id="delGuestAvatar" style="display:inline-block;margin-bottom:.8rem"></div>
+            <div id="delGuestName" style="font-weight:700;font-size:1.15rem"></div>
+            <div id="delGuestEmail" class="text-sm" style="color:var(--muted)"></div>
+          </div>
+          <div class="card-body" style="border-top:1px solid var(--border);padding-top:1rem">
+            <div class="us-stats" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:0" id="delGuestFacts"></div>
+          </div>
+          <div class="card-body" style="padding-top:0">
+            <div class="warn-box">
+              <div class="row" style="gap:.6rem;align-items:flex-start">
+                <span data-icon="alert" style="width:20px;height:20px;flex:none;color:var(--danger)"></span>
+                <div><b>This can't be undone.</b>
+                  <p class="text-sm" style="margin-top:.35rem;color:var(--muted)">The account, its login access, and its profile details will be permanently removed. Existing bookings stay on record for reporting.</p>
+                </div>
+              </div>
+            </div>
+            <div class="row" style="gap:.6rem;justify-content:flex-end">
+              <button class="btn btn-ghost" id="delCancel">Cancel</button>
+              <button class="btn" style="background:var(--danger);color:#fff" id="delConfirm"><span data-icon="trash" style="width:16px;height:16px"></span> Delete guest</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_USERS__ = /*[[${usersForJs}]]*/ [];
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="javascript">
+  App.boot({guard:'staff'});
+  App.renderDashChrome(App.getCurrentUser().role==='STAFF'?'sgu':'au','Guests',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Guests',href:'#'}]);
+  (function(){
+    /*[# th:if="${adminActionMsg} != null"]*/
+    App.toast('[[${adminActionMsg}]]', [[${adminActionOk}]]?'success':'error');
+    /*[/]*/
+
+    // Builds and submits a plain hidden-field POST - the backend
+    // (AdminUserController / UserService) is the single source of truth for
+    // validation, uniqueness checks, password hashing and the block rule,
+    // so this page never writes guest data straight into local storage.
+    function submitForm(action,fields){
+      var form=document.createElement('form');
+      form.method='POST'; form.action=action; form.style.display='none';
+      Object.keys(fields).forEach(function(k){ var i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=fields[k]; form.appendChild(i); });
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    // ---- "Page" switching, all within this one file (no extra templates) ----
+    // Uses the URL hash so the browser's own back/forward buttons behave
+    // like real page navigation (#edit-123, #delete-123) without a full
+    // server round trip just to switch which section is visible.
+    var panes=document.querySelectorAll('main[data-view]');
+    function showView(name){
+      for(var i=0;i<panes.length;i++){ panes[i].style.display=(panes[i].getAttribute('data-view')===name)?'block':'none'; }
+      window.scrollTo(0,0);
+    }
+    function applyHash(){
+      var h=location.hash.replace('#','');
+      if(h.indexOf('edit-')===0){ openEditPage(h.slice(5)); }
+      else if(h.indexOf('delete-')===0){ openDeletePage(h.slice(7)); }
+      else { showView('list'); }
+    }
+    // popstate (not hashchange) is what fires when the user presses the
+    // browser's own Back/Forward buttons - pushState (used below for every
+    // programmatic navigation) never fires hashchange on the tab that called it.
+    window.addEventListener('popstate',applyHash);
+    function goTo(hash){ history.pushState(null,'',hash?('#'+hash):location.pathname); applyHash(); }
+
+    var users=App.getUsers().filter(function(u){ return u.role==='GUEST'; });
+
+    function findUser(id){ return users.find(function(x){return String(x.id)===String(id);}); }
+
+    // ---- Edit page ----
+    function openEditPage(id){
+      var u=findUser(id);
+      if(!u){ goTo(''); return; }
+      document.getElementById('editTitle').textContent='Edit '+u.name;
+      document.getElementById('eName').value=u.name||'';
+      document.getElementById('eEmail').value=u.email||'';
+      document.getElementById('ePhone').value=u.phone||'';
+      document.getElementById('eGender').value=u.gender?App.cap(u.gender.toLowerCase()):'Not provided';
+      document.getElementById('eAddress').value=u.address||'';
+      document.getElementById('eStatus').value=u.status||'active';
+      document.getElementById('editSave').onclick=function(){
+        submitForm('/admin/user-management/'+u.id+'/update',{
+          name:document.getElementById('eName').value,
+          email:u.email,
+          phone:document.getElementById('ePhone').value,
+          gender:u.gender||'',
+          address:document.getElementById('eAddress').value,
+          status:document.getElementById('eStatus').value
+        });
+      };
+      showView('edit');
+    }
+    document.getElementById('editCancel').addEventListener('click',function(){ goTo(''); });
+    document.getElementById('editBack').addEventListener('click',function(){ goTo(''); });
+
+    // ---- Delete page ----
+    function openDeletePage(id){
+      var u=findUser(id);
+      if(!u){ goTo(''); return; }
+      document.getElementById('delGuestAvatar').innerHTML=App.avatarHTML(u,'avatar lg');
+      document.getElementById('delGuestName').textContent=u.name;
+      document.getElementById('delGuestEmail').textContent=u.email;
+      document.getElementById('delGuestFacts').innerHTML=[
+        ['Phone',u.phone||'\u2014'],
+        ['Joined',App.month(u.memberSince)||'\u2014'],
+        ['Bookings',bookingsCount(u)],
+        ['Status',App.cap(u.status)]
+      ].map(function(x){
+        return '<div class="kpi" style="padding:.7rem .9rem"><div><div class="k-lab">'+x[0]+'</div><div class="k-val" style="font-size:1rem">'+App.esc(String(x[1]))+'</div></div></div>';
+      }).join('');
+      document.getElementById('delConfirm').onclick=function(){
+        submitForm('/admin/user-management/'+u.id+'/delete',{});
+      };
+      showView('delete');
+    }
+    document.getElementById('delCancel').addEventListener('click',function(){ goTo(''); });
+    document.getElementById('delBack').addEventListener('click',function(){ goTo(''); });
+
+    // ---- List page ----
+    var st={q:'',status:'',page:1,per:8};
+    var books=App.getBookings();
+
+    function bookingsCount(u){ return books.filter(function(b){return b.userId===u.id;}).length; }
+
+    function isBlocked(u){ return u.blockedUntil && u.blockedUntil>=App.todayISO(); }
+
+    document.getElementById('usStats').innerHTML=[
+      ['users','primary','Total guests',users.length],
+      ['shield','success','Active',users.filter(function(u){return u.status==='active'&&!isBlocked(u);}).length],
+      ['lock','danger','Temporarily blocked',users.filter(isBlocked).length],
+      ['alert','warning','Inactive / blocked status',users.filter(function(u){return u.status!=='active';}).length]
+    ].map(function(x){ return '<div class="kpi"><div class="ico ico-'+x[1]+'">'+App.icon(x[0],'icon')+'</div><div><div class="k-val">'+x[3]+'</div><div class="k-lab">'+x[2]+'</div></div></div>'; }).join('');
+
+    var tbl=document.getElementById('usTable');
+    function filtered(){
+      return users.filter(function(u){
+        if(st.status&&u.status!==st.status)return false;
+        if(st.q){ var h=(u.name+' '+u.email+' '+(u.phone||'')).toLowerCase(); if(h.indexOf(st.q.toLowerCase())===-1)return false; }
+        return true;
+      });
+    }
+    function initials(n){ return n.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase(); }
+
+    function render(){
+      var res=filtered();
+      var pages=Math.max(1,Math.ceil(res.length/st.per));
+      if(st.page>pages)st.page=pages;
+      var slice=res.slice((st.page-1)*st.per,st.page*st.per);
+      if(!res.length){ tbl.innerHTML='<tr><td colspan="7" style="padding:2.4rem;text-align:center;color:var(--muted)">No guests match your filters.</td></tr>'; }
+      else tbl.innerHTML='<thead><tr><th>Guest</th><th>Contact</th><th>Bookings</th><th>Joined</th><th>Status</th><th>Block</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+
+              slice.map(function(u){
+                var blocked=isBlocked(u);
+                return '<tr data-id="'+u.id+'">'+
+                        '<td><div class="cell-user"><div class="avatar" style="background:var(--grad)">'+App.esc(initials(u.name))+'</div><div><div class="nm">'+App.esc(u.name)+'</div><div class="em">'+App.esc(u.email)+'</div></div></div></td>'+
+                        '<td class="text-sm">'+(u.phone||'&mdash;')+'</td>'+
+                        '<td><b>'+bookingsCount(u)+'</b></td>'+
+                        '<td class="text-sm">'+(App.month(u.memberSince)||'&mdash;')+'</td>'+
+                        '<td><span class="badge '+(u.status==='active'?'b-success':u.status==='blocked'?'b-danger':'b-plain')+'">'+App.cap(u.status)+'</span></td>'+
+                        '<td>'+(blocked?
+                          '<div class="block-cell"><span class="block-tag">Until '+u.blockedUntil+'</span><button class="btn btn-ghost btn-sm" data-unblock="'+u.id+'">Unblock</button></div>'
+                          :'<div class="block-cell"><input type="number" min="1" value="7" id="days-'+u.id+'"><button class="btn btn-ghost btn-sm" data-block="'+u.id+'">Block</button></div>')+
+                        '</td>'+
+                        '<td class="actions">'+
+                        '<button class="btn btn-ghost btn-sm" data-edit="'+u.id+'" title="Edit">'+App.icon('edit','icon')+'</button>'+
+                        '<button class="btn btn-ghost btn-sm" data-rm="'+u.id+'" title="Delete">'+App.icon('trash','icon')+'</button>'+
+                        '</td></tr>';
+              }).join('')+'</tbody>';
+      document.getElementById('usPager').innerHTML=App.pagination(st.page,pages);
+      App.initPager(document.getElementById('usPager'),function(p){ st.page=p; render(); });
+    }
+
+    document.getElementById('usSearch').addEventListener('input',App.debounce(function(){ st.q=this.value; st.page=1; render(); },250));
+    document.getElementById('usStatus').addEventListener('change',function(){ st.status=this.value; st.page=1; render(); });
+
+    tbl.addEventListener('click',function(e){
+      var ed=e.target.closest('[data-edit]'), rm=e.target.closest('[data-rm]'),
+          block=e.target.closest('[data-block]'), unblock=e.target.closest('[data-unblock]');
+      if(ed){ goTo('edit-'+ed.dataset.edit); return; }
+      if(rm){ goTo('delete-'+rm.dataset.rm); return; }
+      if(block){
+        var id=block.dataset.block;
+        var days=parseInt(document.getElementById('days-'+id).value,10)||0;
+        if(days<1){ App.toast('Enter at least 1 day.','warning'); return; }
+        App.openConfirm('Block this guest?','They will not be able to log in for '+days+' day(s).',{variant:'danger',confirmText:'Block'}).then(function(ok){
+          if(!ok)return;
+          submitForm('/admin/user-management/'+id+'/block',{days:days});
+        });
+      }
+      if(unblock){
+        var uid=unblock.dataset.unblock;
+        submitForm('/admin/user-management/'+uid+'/unblock',{});
+      }
+    });
+
+    // "Add guest" creates a real GUEST account through the backend
+    // (POST /admin/user-management/create -> AdminUserController ->
+    // UserService.createGuestAccount).
+    function attachPasswordToggle(fieldId){
+      var tries=0;
+      var timer=setInterval(function(){
+        tries++;
+        var inp=document.getElementById(fieldId);
+        if(inp&&!inp.dataset.pwToggle){
+          clearInterval(timer);
+          inp.dataset.pwToggle='1';
+          inp.type='password';
+          inp.autocomplete='new-password';
+        } else if(tries>40){
+          clearInterval(timer);
+        }
+      },50);
+    }
+    function openAddUserForm(prefill){
+      App.openForm('Add new guest',[
+        {id:'uName',label:'Full name',type:'text',value:(prefill&&prefill.uName)||'',req:true},
+        {id:'uEmail',label:'Email',type:'email',value:(prefill&&prefill.uEmail)||'',req:true},
+        {id:'uPhone',label:'Phone',type:'text',value:(prefill&&prefill.uPhone)||''},
+        {id:'uPassword',label:'Password',type:'text',value:'',req:true,placeholder:'Min 6 characters'},
+        {id:'uPassword2',label:'Confirm password',type:'text',value:'',req:true,placeholder:'Repeat password'},
+        {id:'uAddress',label:'Address',type:'text',value:(prefill&&prefill.uAddress)||''},
+        {id:'uGender',label:'Gender',type:'select',value:(prefill&&prefill.uGender)||'male',options:['male','female','other']},
+        {id:'uStatus',label:'Status',type:'select',value:(prefill&&prefill.uStatus)||'active',options:['active','inactive']}
+      ],'Create guest').then(function(v){
+        if(!v)return;
+        if(v.uPassword.length<6){ App.toast('Password must be at least 6 characters.','warning'); openAddUserForm(v); return; }
+        if(v.uPassword!==v.uPassword2){ App.toast('Passwords do not match.','warning'); openAddUserForm(v); return; }
+        submitForm('/admin/user-management/create',{
+          name:v.uName, email:v.uEmail, phone:v.uPhone||'', password:v.uPassword,
+          address:v.uAddress||'', gender:v.uGender||'', status:v.uStatus
+        });
+      });
+      attachPasswordToggle('uPassword');
+      attachPasswordToggle('uPassword2');
+    }
+    document.getElementById('addUser').addEventListener('click',function(){ openAddUserForm(null); });
+
+    applyHash();
+    render();
+  })();
+</script>
+</body>
+</html>

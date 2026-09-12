@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+<title>booking-confirmation</title>
+<style>
+
+</style>
+</head>
+
+<body data-chrome="dash" data-active="ub">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap" style="max-width:900px">
+      <div class="card" id="confCard" style="overflow:hidden">
+        <div class="card-body" id="confBody"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+App.boot({guard:'auth'});
+App.renderDashChrome(App.getCurrentUser().role==='GUEST'?'ub':'ab','Booking Confirmation',[{label:'Dashboard',href:'/user/dashboard'},{label:'Confirmation',href:'#'}]);
+(function(){
+  var id=new URLSearchParams(location.search).get('id');
+  var justPaid=new URLSearchParams(location.search).get('paid')==='1';
+  var b=App.bookingById(id);
+  var body=document.getElementById('confBody');
+  if(!b){ body.innerHTML=App.emptyState('alertCircle','Booking not found','We could not locate that booking.','<a class="btn btn-primary btn-sm" href="/user/my-bookings">Back to bookings</a>'); App.hydrateIcons(body); return; }
+  if(justPaid){
+    App.toast('Payment received - thank you!');
+    App.addNotif('payment','Payment received','Your payment for booking '+b.bookingId+' was received. Thank you!','/user/booking-details?id='+b.id);
+  } else {
+    App.addNotif('booking','Booking confirmed','Your booking '+b.bookingId+' for '+b.roomName+' is confirmed. See you soon!','/user/booking-details?id='+b.id);
+  }
+  // Seed the "last seen" snapshot so the diff-based sync (on dashboard/my-bookings)
+  // doesn't fire a duplicate notification for the state we just already announced.
+  App.syncBookingNotifs([b]);
+  var st=new Date(b.checkIn).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  body.innerHTML=
+    '<div class="confirm-hero"><div class="ok-badge">'+App.icon('checkCircle','icon-lg')+'</div>'+
+    '<h1>Booking Confirmed</h1>'+
+    '<p>Thank you '+App.esc(b.guest)+'! Your stay at '+App.esc(b.roomName)+' is confirmed. A confirmation email has been sent to '+(b.contact&&b.contact.email?App.esc(b.contact.email):'your inbox')+'.</p>'+
+    '<div class="conf-id">'+App.esc(b.bookingId)+'</div>'+
+    '<div class="row mt-3" style="justify-content:center;gap:.5rem"><span class="badge '+(b.payment==='paid'?'b-success':'b-warning')+'">Payment: '+(b.payment==='paid'?'Paid':'Unpaid')+'</span><span class="badge b-primary">Status: Confirmed</span></div></div>'+
+
+    '<div class="divider" style="margin:1.4rem 0"></div>'+
+    '<div class="join-grid">'+
+    '<div class="join-cell"><div class="k">Guest</div><div class="v">'+App.esc(b.guest)+'</div></div>'+
+    '<div class="join-cell"><div class="k">Room</div><div class="v">'+App.esc(b.roomName)+' <div class="text-xs" style="font-weight:400;color:var(--muted)">'+App.esc(b.roomType)+'</div></div></div>'+
+    '<div class="join-cell"><div class="k">Check-in</div><div class="v">'+App.fmtDate(b.checkIn)+'</div></div>'+
+    '<div class="join-cell"><div class="k">Check-out</div><div class="v">'+App.fmtDate(b.checkOut)+'</div></div>'+
+    '<div class="join-cell"><div class="k">Guests</div><div class="v">'+b.adults+' adults'+(b.children?' + '+b.children+' child':'')+'</div></div>'+
+    '<div class="join-cell"><div class="k">Nights</div><div class="v">'+b.nights+'</div></div>'+
+    '</div>'+
+
+    '<div class="row between mt-4" style="align-items:flex-start;gap:1.4rem;flex-wrap:wrap">'+
+    '<div style="flex:1;min-width:260px"><h4 class="mb-2" style="font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Price summary</h4>'+
+    '<div class="sum-row"><span class="k">'+b.nights+' night&times; '+App.money(b.roomPrice)+'</span><span class="v">'+App.money(b.nights*b.roomPrice)+'</span></div>'+
+    (b.discountAmount?'<div class="sum-row" style="color:var(--success)"><span class="k">Discount'+(b.promoCode?' ('+b.promoCode+')':'')+'</span><span class="v">&minus; '+App.money(b.discountAmount)+'</span></div>':'')+
+    (b.servicesTotal?'<div class="sum-row"><span class="k">Services</span><span class="v">+'+App.money(b.servicesTotal)+'</span></div>':'')+
+    '<div class="sum-row"><span class="k">Taxes &amp; fees</span><span class="v">+'+App.money(b.taxAmount)+'</span></div>'+
+    '<div class="sum-total"><span class="k">Total</span><span class="v">'+App.money(b.totalAmount)+'</span></div></div>'+
+    '<div style="flex:1;min-width:240px"><h4 class="mb-2" style="font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">What happens next</h4>'+
+    '<ul class="grid" style="gap:.55rem;padding-left:1.1rem;color:var(--muted);font-size:.88rem">'+
+    '<li>'+(b.payment==='paid'?'Payment received — you\u2019re all set.':'Complete your payment anytime from the dashboard to unlock your WiFi password.')+'</li>'+
+    '<li>Check-in opens at 3:00 PM on '+App.fmtDate(b.checkIn)+'.</li>'+
+    '<li>Free cancellation until 48 hours before arrival.</li></ul></div></div>'+
+
+    '<div class="divider" style="margin:1.4rem 0"></div>'+
+    '<div class="row wrap" style="gap:.6rem;justify-content:center">'+
+    (b.payment!=='paid'?'<a class="btn btn-primary" href="/user/checkout?bookingId='+b.id+'"><span data-icon="card"></span> Pay now</a>':'')+
+    '<a class="btn '+(b.payment!=='paid'?'btn-outline':'btn-primary')+'" href="/user/booking-details?id='+b.id+'"><span data-icon="eye"></span> View booking</a>'+
+    '<button class="btn btn-outline" onclick="window.print()"><span data-icon="printer"></span> Print booking</button>'+
+    '<a class="btn btn-outline" href="/user/bookings/'+b.id+'/invoice"><span data-icon="download"></span> Download invoice</a>'+
+    '<a class="btn btn-ghost" href="/user/dashboard">Back to dashboard</a></div>';
+  App.hydrateIcons(body);
+})();
+</script>
+</body>
+</html>
+
+
+
+

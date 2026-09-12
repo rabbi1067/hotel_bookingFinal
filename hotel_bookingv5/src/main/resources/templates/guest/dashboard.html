@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>User Dashboard | Grand Meridian Resort</title>
+  <style>
+    .welcome-row{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem}
+    .welcome-row h2{font-family:var(--display);font-size:1.5rem}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.4rem}
+    .live-card{background:linear-gradient(135deg,#1a2e29,var(--primary));color:#fff;border-radius:var(--radius-lg);padding:1.5rem 1.6rem;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .live-card:before{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.07);top:-120px;right:-90px}
+    .live-card .lc-top{display:flex;align-items:center;gap:.6rem;position:relative}
+    .live-card .lc-title{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:rgba(255,255,255,.72)}
+    .live-card .lc-room{font-family:var(--display);font-size:1.45rem;font-weight:700;margin:.5rem 0 .1rem}
+    .live-card .lc-sub{font-size:.85rem;color:rgba(255,255,255,.78)}
+    .chrono{display:flex;gap:.55rem;flex-wrap:wrap;margin:1.1rem 0 .2rem;position:relative}
+    .chrono .cu{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:13px;padding:.55rem .9rem;text-align:center;min-width:64px}
+    .chrono .cu .n{font-family:var(--display);font-size:1.35rem;font-weight:800;line-height:1}
+    .chrono .cu .l{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-top:.25rem}
+    .lc-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin-top:1rem;position:relative}
+    .lc-date{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:.7rem .95rem}
+    .lc-date .d{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700}
+    .lc-date .v{font-size:.95rem;font-weight:650;margin-top:.15rem}
+    .lc-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.1rem;position:relative}
+    .live-prog{position:relative;margin-top:1.2rem}
+    .live-prog .track{height:7px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden}
+    .live-prog .fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#ffd166,#ff9f43);transition:width .6s}
+    .live-prog .lbl{display:flex;justify-content:space-between;margin-top:.45rem;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);font-weight:700}
+    .stay-timeline{display:flex;align-items:flex-start;gap:.4rem;margin-top:1.1rem;position:relative}
+    .stay-timeline .step{flex:1;text-align:center;position:relative}
+    .stay-timeline .step .dot{width:18px;height:18px;border-radius:50%;margin:0 auto;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.35);position:relative;z-index:2}
+    .stay-timeline .step.done .dot{background:#fff;border-color:#fff}
+    .stay-timeline .step.done .dot:after{content:"\2713";font-size:10px;color:var(--primary);font-weight:900;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+    .stay-timeline .step.current .dot{border-color:#ffd166;background:#ffd166;box-shadow:0 0 0 4px rgba(255,209,102,.25)}
+    .stay-timeline .step .name{font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.75);font-weight:700;margin-top:.4rem;position:relative;z-index:2}
+    .stay-timeline .step.current .name{color:#fff}
+    .stay-timeline .ln{position:absolute;top:9px;left:calc(50% + 14px);right:calc(-50% + 14px);height:2px;background:rgba(255,255,255,.2)}
+    .stay-timeline .step.done+.step .ln,.stay-timeline .step.done .ln{background:rgba(255,255,255,.7)}
+    .quick-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem}
+    .qa{display:flex;flex-direction:column;align-items:flex-start;gap:.4rem;border:1px solid var(--border);border-radius:13px;padding:.85rem .95rem;background:var(--surface);color:var(--text);font-family:var(--font);cursor:pointer;transition:.15s;text-align:left}
+    .qa:hover{border-color:var(--primary);background:var(--primary-soft);box-shadow:var(--shadow-sm)}
+    .qa .qi{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-soft);color:var(--primary)}
+    .qa .qt{font-weight:700;font-size:.86rem}
+    .qa .qs{font-size:.72rem;color:var(--muted)}
+    .dash-split{display:grid;grid-template-columns:1.15fr 1fr;gap:1.4rem;align-items:start}
+    .quick-card{border-radius:var(--radius);padding:1.2rem;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:.6rem}
+    .mini-fav{display:flex;align-items:center;gap:.8rem;padding:.55rem 0}
+    .mini-fav img{width:54px;height:44px;border-radius:9px;object-fit:cover}
+    .notif-mini{padding:.6rem 0;border-bottom:1px solid var(--border);display:flex;gap:.7rem;align-items:flex-start}
+    .notif-mini:last-child{border-bottom:0}
+    .notif-mini .ni-ico{width:34px;height:34px;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center}
+    .info-row{display:flex;justify-content:space-between;gap:1rem;padding:.45rem 0;font-size:.86rem}
+    .info-row .k{color:var(--muted)}
+    .recp-chip{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--border);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;background:var(--surface)}
+    .order-mini{display:flex;gap:.75rem;align-items:flex-start;padding:.65rem 0;border-bottom:1px solid var(--border)}
+    .order-mini:last-child{border-bottom:0}
+    .order-mini .oi{width:38px;height:38px;flex:none;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-soft);color:var(--primary)}
+    .order-mini .omt{font-size:.86rem;font-weight:650}
+    .order-mini .oms{font-size:.74rem;color:var(--muted)}
+    .order-mini .om-side{text-align:right;margin-left:auto}
+    .order-mini .om-side .amt{font-weight:750}
+    .room-mini{display:flex;align-items:center;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+    .room-mini:last-child{border-bottom:0}
+    .room-mini img{width:54px;height:44px;border-radius:9px;object-fit:cover}
+    .room-mini .rmt{font-size:.86rem;font-weight:650}
+    .room-mini .rms{font-size:.74rem;color:var(--muted)}
+    .room-mini .side{text-align:right;margin-left:auto}
+    .room-mini .side .p{font-weight:750;font-size:.86rem}
+    @media (max-width:1024px){.dash-split{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ud">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="page-head row between wrap">
+        <div>
+          <div class="text-sm" style="color:var(--muted)"><span id="todayLab"></span></div>
+          <h2 style="font-family:var(--display)">Good day, <span id="greet">Guest</span></h2>
+        </div>
+        <a class="btn btn-primary" th:href="@{/user/search-rooms}">New booking <span data-icon="arrowRight" class="icon" style="width:16px;height:16px"></span></a>
+      </div>
+
+      <div class="kpi-grid" id="kpis"></div>
+
+      <div id="stayPicker" style="text-align:right;margin-bottom:.4rem"></div>
+      <div id="liveStay" class="mb-3"></div>
+
+      <div class="dash-split">
+        <div>
+          <div class="card mb-3">
+            <div class="card-head"><h3>Quick actions</h3></div>
+            <div class="card-body">
+              <div class="quick-acts" id="quickActs"></div>
+            </div>
+          </div>
+          <div class="card mb-3">
+            <div class="card-head"><h3>Notifications</h3><a class="text-sm strong" th:href="@{/user/notifications}">View all</a></div>
+            <div id="notifMini"></div>
+          </div>
+          <div class="card mb-3">
+            <div class="card-head"><h3>Your orders</h3><a class="text-sm strong" th:href="@{/user/food-cart}">Order food</a></div>
+            <div class="card-body" id="orderList" style="padding-top:0"></div>
+          </div>
+          <div class="card mb-3">
+            <div class="card-head"><h3>Recent bookings</h3><a class="text-sm strong" th:href="@{/user/my-bookings}">View all</a></div>
+            <div id="recentBooks"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card mb-3">
+            <div class="card-head"><h3>My stay information</h3></div>
+            <div class="card-body" id="stayInfo"></div>
+          </div>
+          <div class="quick-card mb-3">
+            <h4 style="font-size:.95rem;display:flex;align-items:center;gap:.5rem"><span data-icon="heart" class="icon" style="width:18px;height:18px;color:var(--accent)"></span> Favorites</h4>
+            <div id="favQuick"></div>
+            <a class="btn btn-soft btn-sm" style="margin-top:auto" th:href="@{/user/favorites}">View all favorites</a>
+          </div>
+          <div class="quick-card">
+            <div class="row between">
+              <h4 style="font-size:.95rem;display:flex;align-items:center;gap:.5rem"><span data-icon="bed" class="icon" style="width:18px;height:18px;color:var(--accent)"></span> Rooms</h4>
+              <a class="text-sm strong" th:href="@{/user/search-rooms}">Browse all</a>
+            </div>
+            <div id="roomQuick"></div>
+          </div>
+          <div class="quick-card">
+            <h4 style="font-size:.95rem;display:flex;align-items:center;gap:.5rem"><span data-icon="card" class="icon" style="width:18px;height:18px;color:var(--accent)"></span> Payments</h4>
+            <div id="payQuick"></div>
+            <a class="btn btn-soft btn-sm" style="margin-top:auto" th:href="@{/user/payment-status}">View payments</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_ROOMS__ = /*[[${roomsForJs}]]*/ [];
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  window.__SERVER_WIFI__ = /*[[${wifiForJs}]]*/ null;
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script th:inline="none">
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('ud','Dashboard',[{label:'Dashboard',href:'#'}]);
+  App.startBookingStatusWatch();
+  (function(){
+    var cu=App.getCurrentUser();
+    var books=App.getBookings().filter(function(b){return b.userId===cu.id;});
+    App.syncBookingNotifs(books);
+    var pick=null; var tick=null; var manualPickId=null;
+    var nameParts=cu.name.trim().split(/\s+/);
+    document.getElementById('greet').textContent=nameParts[0]||'Guest';
+    var todayLab=document.getElementById('todayLab');
+    function stampLab(){ todayLab.textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})+' &bull; '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+    stampLab(); setInterval(stampLab,1000);
+
+    function relevantBookings(){
+      // Anything worth a guest actively switching between - not yet finished.
+      return books.filter(function(b){ return b.status!=='completed'&&b.status!=='cancelled'; })
+              .sort(function(a,b){return a.checkIn<b.checkIn?-1:1;});
+    }
+    function chooseBooking(){
+      if(manualPickId){
+        var m=books.filter(function(b){return String(b.id)===String(manualPickId);})[0];
+        // Stay pinned to the manually-picked booking only while it's still
+        // "live" - once it completes or is cancelled, drop the pin so the
+        // dashboard auto-falls-back to the next relevant stay instead of
+        // getting stuck showing a finished booking forever.
+        if(m && m.status!=='completed'&&m.status!=='cancelled')return m;
+        manualPickId=null;
+      }
+      var active=books.filter(function(b){ return b.status==='active'||!!b.actualCheckInTime; });
+      if(active.length)return active.sort(function(a,b){return a.checkOut<b.checkOut?-1:1;})[0];
+      var confirmed=books.filter(function(b){ return b.status==='confirmed'||b.status==='pending'; }).sort(function(a,b){return a.checkIn<b.checkIn?-1:1;});
+      if(confirmed.length)return confirmed[0];
+      return books.filter(function(b){return b.status==='completed';}).sort(function(a,b){return b.checkOut<b.checkOut?1:-1;})[0]||null;
+    }
+    var lastPickerKey=null;
+    function renderStayPicker(){
+      var box=document.getElementById('stayPicker');
+      var rel=relevantBookings();
+      // Only worth showing a picker at all when there's genuinely more than
+      // one room/stay to choose between (e.g. two overlapping-in-time
+      // bookings for different rooms) - otherwise it's just noise.
+      if(rel.length<2){ if(box.innerHTML)box.innerHTML=''; lastPickerKey=null; return; }
+      var key=rel.map(function(b){return b.id;}).join(',');
+      var existing=document.getElementById('staySelect');
+      if(existing && key===lastPickerKey){
+        // The set of choices hasn't changed since the last render - just
+        // keep the selected value in sync in place. Rebuilding the <select>
+        // node every second (the countdown tick) would tear an open native
+        // dropdown out from under the user before they can click an option.
+        if(pick && existing.value!==String(pick.id))existing.value=String(pick.id);
+        return;
+      }
+      lastPickerKey=key;
+      box.innerHTML='<div class="text-xs" style="color:var(--muted);margin-bottom:.3rem;text-align:right">You have '+rel.length+' active bookings - viewing:</div>'+
+              '<select class="input" id="staySelect" style="min-width:240px">'+
+              rel.map(function(b){
+                var room=App.roomById(b.roomId);
+                var label=(room?room.name:b.roomName)+' (Room '+(room?room.number:'?')+') \u2022 '+App.fmtDate(b.checkIn)+' \u2192 '+App.fmtDate(b.checkOut);
+                return '<option value="'+b.id+'"'+(pick&&String(pick.id)===String(b.id)?' selected':'')+'>'+App.esc(label)+'</option>';
+              }).join('')+
+              '</select>';
+      document.getElementById('staySelect').addEventListener('change',function(){
+        manualPickId=this.value;
+        renderLive();
+      });
+    }
+    function renderLive(){
+      var el=document.getElementById('liveStay');
+      pick=chooseBooking();
+      renderStayPicker();
+      if(!pick){
+        el.innerHTML=App.emptyState('calendar','No stay yet','Plan your next escape to see your live check-in countdown, stay progress and room details here.','<a class="btn btn-primary btn-sm" href="/user/search-rooms">Book a room</a>');
+        return;
+      }
+      var live=App.liveStay(pick);
+      var s=live.state;
+      var title=''; var sub='';
+      if(s==='UPCOMING'){
+        title='UPCOMING STAY';
+        sub=pick.roomName+' &middot; '+pick.roomType+(App.roomById(pick.roomId)?' &middot; Room '+App.roomById(pick.roomId).number:'');
+      } else if(s==='CHECK_IN_TODAY'){
+        title='CHECK-IN TODAY';
+        sub=pick.roomName+' &middot; Room '+(App.roomById(pick.roomId)||{}).number;
+      } else if(s==='AWAITING_CHECK_IN'){
+        title='AWAITING CHECK-IN';
+        sub='Your check-in time ('+App.bookingCheckInDT(pick).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+') has arrived. The front desk is ready for you.';
+      } else if(s==='CHECKED_IN'||s==='CURRENT_STAY'){
+        title='YOUR CURRENT STAY';
+        sub=pick.roomName+' &middot; Room '+(App.roomById(pick.roomId)||{}).number+' &middot; '+(pick.nights||0)+' nights';
+      } else if(s==='CHECK_OUT_TODAY'){
+        title='CHECK-OUT TODAY';
+        sub=pick.roomName+' &middot; Check-out is scheduled for '+App.bookingCheckOutDT(pick).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' today.';
+      } else if(s==='CHECK_OUT_DUE'){
+        title='CHECK-OUT DUE';
+        sub='Your scheduled check-out time has passed. Please contact reception so we can prepare your room.';
+      } else if(s==='COMPLETED'){
+        title='\u2713 STAY COMPLETED';
+        sub=pick.roomName+' &middot; Thank you for staying with us.';
+      } else if(s==='CANCELLED'){
+        title='CANCELLED';
+        sub='This reservation was cancelled.';
+      }
+      el.innerHTML='<div class="live-card">'+
+              '<div class="lc-top"><span class="lc-title">'+title+'</span>'+
+              (live.meta&&live.meta.tone==='danger'?'':((s!=='COMPLETED'&&s!=='CANCELLED')?'<span style="width:8px;height:8px;border-radius:50%;background:'+(live.meta&&live.meta.tone==='warning'?'#ffd166':(live.meta&&live.meta.tone==='success'?'#34d399':'#fff'))+';display:inline-block"></span>':''))+
+              '</div>'+
+              '<div class="lc-room">'+App.esc(pick.roomName)+'</div>'+
+              '<div class="lc-sub">'+App.esc(sub)+'</div>'+
+              chronoHTML(live)+
+              '<div class="lc-dates">'+
+              '<div class="lc-date"><div class="d">Scheduled check-in</div><div class="v">'+App.fmtDate(pick.checkIn)+' &bull; '+timeHTML(App.bookingCheckInDT(pick))+'</div></div>'+
+              '<div class="lc-date"><div class="d">Scheduled check-out</div><div class="v">'+App.fmtDate(pick.checkOut)+' &bull; '+timeHTML(App.bookingCheckOutDT(pick))+'</div></div>'+
+              '</div>'+
+              (pick.actualCheckInTime?'<div class="lc-sub" style="margin-top:.6rem">Actual check-in: <b>'+new Date(pick.actualCheckInTime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b></div>':'')+
+              (pick.actualCheckOutTime?'<div class="lc-sub" style="margin-top:.3rem">Actual check-out: <b>'+new Date(pick.actualCheckOutTime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b></div>':'')+
+              liveProgHTML(pick,live)+
+              timelineHTML(live)+
+              '<div class="lc-actions">'+
+              '<a class="btn btn-accent btn-sm" href="/user/booking-details?id='+pick.id+'">View booking</a>'+
+              '<button class="btn btn-outline btn-sm" data-reception style="color:#fff;border-color:rgba(255,255,255,.5)"><span data-icon="phone" class="icon" style="width:14px;height:14px"></span> Contact reception</button>'+
+              '<a class="btn btn-outline btn-sm" href="/user/wifi" style="color:#fff;border-color:rgba(255,255,255,.5)">WiFi</a>'+
+              '</div></div>';
+      el.querySelector('[data-reception]').addEventListener('click',contactReception);
+      if(App.hydrateIcons)App.hydrateIcons(el);
+    }
+    function timeHTML(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+    function chronoHTML(live){
+      var c=live.remaining||{d:0,h:0,m:0,s:0};
+      var s=live.state;
+      if(s==='CHECK_OUT_DUE'||s==='AWAITING_CHECK_IN'||s==='COMPLETED'||s==='CANCELLED')return '';
+      return '<div class="chrono">'+
+              '<div class="cu"><div class="n">'+c.d+'</div><div class="l">'+(s==='CURRENT_STAY'||s==='CHECKED_IN'||s==='CHECK_OUT_TODAY'?'days':'days')+'</div></div>'+
+              '<div class="cu"><div class="n">'+String(c.h).padStart(2,'0')+'</div><div class="l">hours</div></div>'+
+              '<div class="cu"><div class="n">'+String(c.m).padStart(2,'0')+'</div><div class="l">minutes</div></div>'+
+              '<div class="cu"><div class="n">'+String(c.s).padStart(2,'0')+'</div><div class="l">seconds</div></div></div>';
+    }
+    function liveProgHTML(b,live){
+      if(live.state==='COMPLETED'||live.state==='CANCELLED')return '';
+      var lbl='';
+      if(live.state==='UPCOMING'||live.state==='CHECK_IN_TODAY')lbl='Booking confirmed &rarr; awaiting check-in';
+      else if(live.state==='AWAITING_CHECK_IN')lbl='Check-in available now';
+      else lbl=live.progress+'% of stay elapsed';
+      return '<div class="live-prog"><div class="track"><div class="fill" style="width:'+live.progress+'%"></div></div><div class="lbl"><span>'+lbl+'</span><span>'+live.state.replace('_',' ')+'</span></div></div>';
+    }
+    function timelineHTML(live){
+      var s=live.state;
+      var stages=['Booking confirmed','Check-in','Current stay','Check-out','Completed'];
+      var cur=-1;
+      if(s==='UPCOMING')cur=0;
+      else if(s==='CHECK_IN_TODAY'||s==='AWAITING_CHECK_IN')cur=1;
+      else if(s==='CHECKED_IN'||s==='CURRENT_STAY'||s==='CHECK_OUT_TODAY'||s==='CHECK_OUT_DUE')cur=2;
+      else if(s==='COMPLETED')cur=4;
+      if(s==='CANCELLED')return '';
+      return '<div class="stay-timeline">'+stages.map(function(st,i){
+        var cls=i<cur?'done':(i===cur?'current':'');
+        var ln=i<stages.length-1?'<span class="ln"></span>':'';
+        return '<div class="step '+cls+'"><span class="dot"></span><span class="name">'+st+'</span>'+ln+'</div>';
+      }).join('')+'</div>';
+    }
+
+    function renderQuick(){
+      var el=document.getElementById('quickActs');
+      var acts=[
+        ['/user/search-rooms','bed','Book a room','Browse and reserve'],
+        ['/user/my-bookings','bookmark','My bookings','View your stays'],
+        ['/user/food-services','utensils','Order food','In-room dining'],
+        ['/user/wifi','wifi','WiFi','Network &amp; password'],
+        ['/user/money-receipts','printer','Money receipts','Paid-stay receipts'],
+        ['/room-details?id='+((App.favs()[0])||'r1'),'heart','Contact reception','Call &amp; support']
+      ];
+      el.innerHTML=acts.map(function(a,i){
+        var isContact=i===5;
+        return '<button class="qa '+(isContact?'qa-contact':'')+'" data-q="'+i+'" style="border:0">'+'<span class="qi">'+App.icon(a[1],'icon')+'</span><div><div class="qt">'+a[2]+'</div><div class="qs">'+a[3]+'</div></div></button>';
+      }).join('');
+      el.querySelectorAll('.qa').forEach(function(b){
+        b.addEventListener('click',function(){
+          var i=+b.dataset.q;
+          if(i===5){ contactReception(); return; }
+          location.href=acts[i][0];
+        });
+      });
+    }
+    function contactReception(){
+      var c=App.getContents();
+      var m=App.openModal('<div class="modal"><div class="modal-head"><h3>Contact reception</h3><button class="modal-x">&times;</button></div><div class="modal-body">'+
+              '<div class="join-grid mb-3">'+
+              '<div class="join-cell"><div class="k">Reception phone</div><div class="v">'+App.esc(c.phone)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Support</div><div class="v">'+App.esc(c.email)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Front desk</div><div class="v">'+App.esc(c.supportHours)+'</div></div>'+
+              '<div class="join-cell"><div class="k">Emergency</div><div class="v">+880 3421 555 199</div></div>'+
+              '</div>'+
+              '<div class="row" style="gap:.5rem;flex-wrap:wrap"><a class="btn btn-primary" href="tel:'+c.phone+'"><span data-icon="phone" class="icon" style="width:15px;height:15px"></span> Call reception</a>'+
+              '<a class="btn btn-soft" href="mailto:'+c.email+'"><span data-icon="mail" class="icon" style="width:15px;height:15px"></span> Contact support</a></div>'+
+              '</div></div>');
+      if(App.hydrateIcons)App.hydrateIcons(m.el);
+    }
+
+    var totalPaid=books.filter(function(b){return b.payment==='paid';}).reduce(function(a,b){return a+b.totalAmount;},0);
+    var pending=books.filter(function(b){return b.payment==='unpaid'&&b.status!=='cancelled';});
+
+    function renderKpis(){
+      document.getElementById('kpis').innerHTML=
+              '<div class="kpi"><div class="ico ico-primary">'+App.icon('calendar','icon')+'</div><div><div class="k-val">'+(pick&&pick.checkIn?App.fmtWhen(pick.checkIn):'—')+'</div><div class="k-lab">Next stay</div></div></div>'+
+              '<div class="kpi"><div class="ico ico-success">'+App.icon('door','icon')+'</div><div><div class="k-val">'+books.filter(function(b){return b.status==='active';}).length+'</div><div class="k-lab">Active stay</div></div></div>'+
+              '<div class="kpi"><div class="ico ico-accent">'+App.icon('bookmark','icon')+'</div><div><div class="k-val">'+books.length+'</div><div class="k-lab">Total bookings</div></div></div>'+
+              '<div class="kpi"><div class="ico ico-warning">'+App.icon('heart','icon')+'</div><div><div class="k-val">'+App.favs().length+'</div><div class="k-lab">Favorite rooms</div></div></div>'+
+              '<div class="kpi"><div class="ico ico-danger">'+App.icon('card','icon')+'</div><div><div class="k-val">'+pending.length+'</div><div class="k-lab">Pending payments</div><div class="k-trend" style="color:var(--danger)">'+App.money(pending.reduce(function(a,b){return a+b.totalAmount;},0))+' due</div></div></div>';
+    }
+
+    var recents=books.slice(0,4);
+    var rb=document.getElementById('recentBooks');
+    if(!recents.length) rb.innerHTML=App.emptyState('bookmark','No bookings yet','When you book, your stays will appear here.','<a class="btn btn-primary btn-sm" href="/user/search-rooms">Book a room</a>');
+    else rb.innerHTML=recents.map(function(b){
+      var live=App.liveStay(b);
+      return '<div class="recent-row"><img src="'+b.roomImage+'" alt=""><div><div class="rr-title">'+App.esc(b.roomName)+'</div><div class="rr-sub">'+b.bookingId+' &bull; '+App.fmtDate(b.checkIn)+' &rarr; '+App.fmtDate(b.checkOut)+'</div></div><div style="text-align:right"><div class="rr-amt">'+App.money(b.totalAmount)+'</div><div class="mt-1">'+badge(b.status)+' '+payBadge(b.payment)+'</div><a class="btn btn-ghost btn-sm mt-1" href="/user/booking-details?id='+b.id+'">Details</a></div></div>';
+    }).join('');
+
+    var notifs=App.getNotifs().filter(function(n){ return !n.user||n.user===cu.id; }).slice(0,3);
+    var nm=document.getElementById('notifMini');
+    if(!notifs.length) nm.innerHTML='<p class="text-sm" style="color:var(--muted);padding:.8rem 1.2rem">You\u2019re all caught up.</p>';
+    else nm.innerHTML=notifs.map(function(n){
+      var col={booking:'primary',payment:'warning',checkin:'success',offer:'accent',service:'info',welcome:'primary'}[n.type]||'primary';
+      return '<div class="notif-mini"><span class="ni-ico ico-'+col+'">'+App.icon(n.type==='payment'?'card':(n.type==='welcome'?'gift':(n.type==='service'?'utensils':(n.type==='offer'?'tag':'bell'))),'icon')+'</span>'+
+              '<div class="grow"><div class="rr-title" style="font-size:.86rem">'+App.esc(n.title)+(n.read?'':' <span class="badge b-primary" style="font-size:.6rem">NEW</span>')+'</div>'+
+              '<div class="rr-sub">'+App.esc(n.msg)+'</div></div></div>';
+    }).join('');
+
+    var ol=document.getElementById('orderList');
+    var myOrders=App.getOrders().filter(function(o){return o.userId===cu.id;}).slice(0,4);
+    if(!myOrders.length) ol.innerHTML='<p class="text-sm" style="color:var(--muted);padding:.55rem 0">No food or service orders yet &mdash; tap &ldquo;Order food&rdquo; to start one.</p>';
+    else ol.innerHTML=myOrders.map(function(o){
+      var m={PLACED:['b-plain','Placed'],PREPARING:['b-warning','Preparing'],OUT_FOR_DELIVERY:['b-accent','Out for delivery'],DELIVERED:['b-success','Delivered'],CANCELLED:['b-danger','Cancelled']};
+      var cfg=m[o.status]||m.PLACED;
+      return '<div class="order-mini"><span class="oi">'+App.icon('utensils','icon')+'</span><div class="grow"><div class="omt">'+App.esc(o.label)+'</div><div class="oms">'+App.esc(o.orderId||o.id)+' &bull; '+o.date+' &bull; '+o.where+'</div></div><div class="om-side"><div class="amt">'+App.money(o.total)+'</div><span class="badge '+cfg[0]+'" style="font-size:.62rem">'+cfg[1]+'</span></div></div>';
+    }).join('');
+
+    var allRooms=document.getElementById('roomQuick');
+    var rooms=App.getRooms();
+    if(!rooms.length) allRooms.innerHTML='<p class="text-sm" style="color:var(--muted)">No rooms available right now.</p>';
+    else allRooms.innerHTML=rooms.slice(0,4).map(function(r){
+      var pct=r.discount||0, final=r.price-(r.price*pct/100);
+      return '<div class="room-mini"><img src="'+r.images[0]+'" alt=""><div class="grow"><div class="rmt">'+r.name+'</div><div class="rms">'+r.type+' &bull; '+r.capacity+' guests</div><span class="avail-dot '+(r.status==='available'?'available':'occupied')+'"></span> '+(r.status==='available'?'Available':'Unavailable')+'</div><div class="side"><div class="p">'+App.money(final)+'</div><a class="btn btn-soft btn-sm" href="/user/room-details?id='+r.id+'">View</a></div></div>';
+    }).join('');
+
+    var favR=App.favs().map(App.roomById).filter(Boolean).slice(0,3);
+    var fq=document.getElementById('favQuick');
+    if(!favR.length) fq.innerHTML='<p class="text-sm" style="color:var(--muted)">No favorites yet &mdash; tap the heart on a room to save it.</p>';
+    else fq.innerHTML=favR.map(function(r){ var p=r.price-(r.price*(r.discount||0)/100); return '<div class="mini-fav"><img src="'+r.images[0]+'" alt=""><div><div class="mf-name">'+r.name+'</div><div class="mf-sub">'+App.money(p)+' / night</div></div></div>'; }).join('');
+
+    var pq=document.getElementById('payQuick');
+    pq.innerHTML='<div class="row between"><span class="text-sm" style="color:var(--muted)">Paid so far</span><b>'+App.money(totalPaid)+'</b></div>'+
+            '<div class="row between"><span class="text-sm" style="color:var(--muted)">Outstanding</span><b style="color:var(--'+(pending.length?'warning':'success')+')">'+App.money(pending.reduce(function(a,b){return a+b.totalAmount;},0))+'</b></div>';
+
+    var si=document.getElementById('stayInfo');
+    if(!pick){ si.innerHTML='<p class="text-sm" style="color:var(--muted)">Your room, floor and WiFi details will appear once you have a booking.</p>'; }
+    else {
+      var r=App.roomById(pick.roomId);
+      var w=App.wifiForBooking(pick);
+      var live=App.liveStay(pick);
+      si.innerHTML=
+              '<div class="info-row"><span class="k">Room</span><b>'+App.esc(pick.roomName)+(r?' &middot; '+r.number:'')+'</b></div>'+
+              '<div class="info-row"><span class="k">Floor</span><b>'+(r?r.floor:'—')+'</b></div>'+
+              '<div class="info-row"><span class="k">Check-in</span><b>'+App.fmtDate(pick.checkIn)+'</b></div>'+
+              '<div class="info-row"><span class="k">Check-out</span><b>'+App.fmtDate(pick.checkOut)+'</b></div>'+
+              '<div class="info-row"><span class="k">Nights</span><b>'+(pick.nights||0)+'</b></div>'+
+              '<div class="info-row"><span class="k">Guests</span><b>'+pick.adults+(pick.children?' + '+pick.children:'')+(pick.pets?' + pet':'')+'</b></div>'+
+              '<div class="info-row"><span class="k">Room status</span><b>'+(r?cap(r.status):'—')+'</b></div>'+
+              '<div class="info-row"><span class="k">Booking status</span><b>'+cap(pick.status)+'</b></div>'+
+              '<div class="info-row"><span class="k">Payment</span><b>'+cap(pick.payment)+'</b></div>'+
+              '<div class="row mt-2" style="gap:.4rem;flex-wrap:wrap"><span class="recp-chip">'+App.icon('wifi','icon-sm')+App.esc(w.ssid)+'</span><a class="btn btn-ghost btn-sm" href="/user/wifi">WiFi</a></div>';
+    }
+
+    function badge(s){ return '<span class="badge b-'+(s==='confirmed'?'primary':s==='active'?'success':s==='completed'?'info':s==='cancelled'?'danger':'warning')+'">'+cap(s)+'</span>'; }
+    function payBadge(p){ return '<span class="badge '+(p==='paid'?'b-success':'b-warning')+'">'+cap(p)+'</span>'; }
+    function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+    renderLive(); renderQuick(); renderKpis();
+    clearInterval(tick);
+    tick=setInterval(function(){ renderLive(); renderKpis(); },1000);
+  })();
+</script>
+</body>
+</html>

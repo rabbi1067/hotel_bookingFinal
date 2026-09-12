@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Food &amp; Services | Grand Meridian Resort</title>
+  <style>
+    .cart-bar{position:sticky;top:calc(var(--topbar-h) + 12px);z-index:700;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:.85rem 1rem;display:flex;align-items:center;gap:.9rem;margin-bottom:1.4rem}
+    .cart-bar .cb-tot{margin-left:auto;font-weight:800;font-size:1.1rem}
+    .cat-tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.3rem}
+    .cat-tabs button{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:.45rem .95rem;font-weight:600;font-size:.85rem;color:var(--muted);cursor:pointer;font-family:var(--font);transition:.14s}
+    .cat-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .svc-card.off{opacity:.6}
+    .svc-card.off img{filter:grayscale(.6)}
+    .unavail-badge{position:absolute;top:.7rem;right:.7rem;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:rgba(0,0,0,.72);color:#ffb3b3;padding:.25rem .6rem;border-radius:99px;border:1px solid rgba(255,150,150,.5)}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ufs">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="section-title"><div class="eyebrow">Order to your door</div><h2 style="font-family:var(--display)">Food &amp; in-room services</h2><p>Breakfast, lunch, dinner, snacks and hotel services delivered to your room.</p></div>
+
+      <div class="cart-bar" id="cartBar" style="display:none">
+        <span class="ico ico-accent" style="width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center"><span data-icon="utensils"></span></span>
+        <div><div class="strong text-sm">Your order</div><div class="text-xs" style="color:var(--muted)" id="cartQtyLab"></div></div>
+        <span class="cb-tot" id="cbTot"></span>
+        <a class="btn btn-primary btn-sm" th:href="@{/user/food-cart}">Review cart</a>
+      </div>
+
+      <div class="cat-tabs" id="catTabs"></div>
+      <div id="loader">
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="sk" style="height:230px"></div><div class="sk" style="height:230px"></div><div class="sk" style="height:230px"></div><div class="sk" style="height:230px"></div></div>
+      </div>
+      <div class="grid svc-grid" id="svcGrid" style="display:none"></div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_FOOD__ = /*[[${foodForJs}]]*/ [];
+  window.__SERVER_CART__ = /*[[${cartForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'user'});
+  App.renderDashChrome('ufs','Food & Services',[{label:'Dashboard',href:'/user/dashboard'},{label:'Food & Services',href:'#'}]);
+  (function(){
+    var food=App.getFood();
+    var serverCart=normalizeCart(window.__SERVER_CART__||[]);
+    var cartBusy=false;
+    var cats=['All'].concat(food.map(function(f){return f.cat;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+    var cur='All';
+    var tabs=document.getElementById('catTabs');
+    tabs.innerHTML=cats.map(function(c){ return '<button class="'+(c===cur?'active':'')+'" data-c="'+c+'">'+c+'</button>'; }).join('');
+    tabs.addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b)return;
+      cur=b.dataset.c; tabs.querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b);});
+      render();
+    });
+    function normalizeCart(payload){
+      var items=Array.isArray(payload)?payload:(payload&&Array.isArray(payload.items)?payload.items:(payload&&Array.isArray(payload.cart)?payload.cart:(payload&&Array.isArray(payload.cartItems)?payload.cartItems:[])));
+      return items.map(function(item){
+        return {id:item.id||item.foodId||item.itemId,qty:Number(item.qty||item.quantity||1)};
+      }).filter(function(item){return item.id&&item.qty>0;});
+    }
+    function cart(){ return serverCart; }
+    function inCart(id){ var c=cart().filter(function(x){return x.id===id;})[0]; return c?c.qty:0; }
+    function loadCart(){
+      return fetch('/user/food-cart/api',{method:'GET',headers:{Accept:'application/json'}}).then(function(res){
+        if(!res.ok)throw new Error('Cart request failed');
+        return res.json();
+      }).then(function(payload){
+        serverCart=normalizeCart(payload);
+        render();
+        updateBar();
+        return serverCart;
+      });
+    }
+    var grid=document.getElementById('svcGrid');
+    function render(){
+      var list=food.filter(function(f){ return cur==='All'||f.cat===cur; });
+      grid.style.display='';
+      grid.innerHTML=list.map(function(f){
+        var q=inCart(f.id);
+        var off=f.available===false;
+        return '<div class="svc-card'+(off?' off':'')+'"><div class="svc-img"><img src="'+f.img+'" alt="'+App.esc(f.name)+'" loading="lazy" onerror="this.style.background=\'#0d3a36\'"><span class="cat">'+f.cat+'</span>'+(off?'<span class="unavail-badge">Unavailable</span>':'')+'</div>'+
+                '<div class="svc-body"><h4>'+f.name+'</h4><p>'+App.esc(f.desc)+'</p>'+
+                '<div class="svc-foot"><span class="svc-price">'+App.money(f.price)+'</span>'+
+                (off?'<button class="btn btn-outline btn-sm" disabled>Unavailable</button>':(q?'<div class="qty"><button class="btn-rm" data-dec="'+f.id+'" aria-label="Remove">'+App.icon('minus','icon-sm')+'</button><span class="q">'+q+'</span><button class="btn-add" data-inc="'+f.id+'" aria-label="Add">'+App.icon('plus','icon-sm')+'</button></div>':'<button class="btn btn-primary btn-sm" data-add="'+f.id+'">Add</button>'))+
+                '</div></div></div>';
+      }).join('');
+      if(!list.length) grid.innerHTML=App.emptyState('utensils','Nothing here','No items in this category yet.');
+    }
+    grid.addEventListener('click',function(e){
+      var add=e.target.closest('[data-add]'), inc=e.target.closest('[data-inc]'), dec=e.target.closest('[data-dec]');
+      if(add) change(add.dataset.add,1,false);
+      if(inc) change(inc.dataset.inc,1,true);
+      if(dec) change(dec.dataset.dec,-1,true);
+    });
+    function change(id,delta,quiet){
+      var f=food.filter(function(x){return x.id===id;})[0];
+      if(!f||f.available===false||!delta||cartBusy)return;
+      cartBusy=true;
+      var params=new URLSearchParams();
+      params.set('foodItemId',id);
+      params.set('delta',String(delta));
+      fetch('/user/food-cart/add',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8',Accept:'application/json'},body:params.toString()})
+              .then(function(res){if(!res.ok)throw new Error('Cart update failed'); return res.text();})
+              .then(function(){return loadCart();})
+              .then(function(){if(!quiet&&delta>0)App.toast(f.name+' added to order.');})
+              .catch(function(){App.toast('Could not update your order. Please try again.','error');})
+              .finally(function(){cartBusy=false;});
+    }
+    function updateBar(){
+      var c=cart(); var n=c.reduce(function(a,b){return a+b.qty;},0);
+      var tot=c.reduce(function(a,b){ var f=food.filter(function(x){return x.id===b.id;})[0]; return a+(f?f.price*b.qty:0); },0);
+      var bar=document.getElementById('cartBar');
+      if(!n){ bar.style.display='none'; return; }
+      bar.style.display='flex';
+      document.getElementById('cartQtyLab').textContent=n+' item'+(n>1?'s':'')+' &bull; delivered to your room';
+      document.getElementById('cbTot').textContent=App.money(tot);
+    }
+    loadCart().then(function(){
+      document.getElementById('loader').style.display='none';
+      render();
+      updateBar();
+    }).catch(function(){
+      document.getElementById('loader').style.display='none';
+      render();
+      updateBar();
+      App.toast('Could not load your current order.','error');
+    });
+  })();
+</script>
+</body>
+</html>
+
+
+

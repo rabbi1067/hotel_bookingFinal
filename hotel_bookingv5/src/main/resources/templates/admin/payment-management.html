@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <th:block th:replace="~{fragments/head-common :: head-common}"></th:block>
+  <title>Payment Management | Admin</title>
+  <style>
+    .pay-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.2rem}
+    .pm-chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:650;color:var(--text);background:var(--surface);border:1px solid var(--border);padding:.2rem .6rem;border-radius:99px}
+    .pm-filterbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+    .pm-filterbar .input-affix{width:230px}
+    .tbl th:last-child{width:150px;text-align:right}
+    .tbl td{vertical-align:middle}
+    .tbl td.actions{display:table-cell;text-align:right;white-space:nowrap;vertical-align:middle}
+    .tbl td.actions .btn{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin-left:.35rem}
+    /* Compact transaction details: design-only enhancement */
+    .tx-modal-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:rgba(15,23,42,.48)}
+    .tx-modal{width:min(900px,calc(100vw - 2rem));max-height:calc(100vh - 2rem);overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 70px rgba(15,23,42,.22);padding:1.25rem}
+    .tx-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+    .tx-title{margin:0;font-family:var(--display);font-size:1.35rem}.tx-sub{margin:.25rem 0 0;color:var(--muted);font-size:.82rem}
+    .tx-close{border:0;background:transparent;color:var(--muted);font-size:1.5rem;cursor:pointer;line-height:1;padding:.2rem}
+    .tx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin-top:1rem}.tx-col{border:1px solid var(--border);border-radius:12px;padding:1rem}
+    .tx-col h4{margin:0 0 .8rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    .tx-row{display:flex;justify-content:space-between;align-items:flex-start;gap:.7rem;padding:.42rem 0;border-bottom:1px dashed var(--border);font-size:.84rem}.tx-row:last-child{border-bottom:0}.tx-row span{color:var(--muted)}.tx-row strong{text-align:right;overflow-wrap:anywhere}
+    .tx-total{display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding:1rem;border-radius:12px;background:var(--grad);color:#fff}.tx-total small{opacity:.82}.tx-total strong{font-size:1.35rem}
+    .tx-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}.tx-actions .btn{display:inline-flex;align-items:center;gap:.4rem}
+    @media(max-width:700px){.tx-grid{grid-template-columns:1fr}.tx-actions{flex-direction:column-reverse}.tx-actions .btn{width:100%;justify-content:center}}
+  </style>
+</head>
+
+<body data-chrome="dash" data-active="ap">
+<div class="app">
+  <div class="sidebar" id="sidebar"></div>
+  <header class="topbar" id="topbar"></header>
+  <main>
+    <div class="page-wrap">
+      <div class="row between wrap mb-3">
+        <div class="section-title" style="margin:0"><div class="eyebrow">Revenue</div><h2 style="font-family:var(--display)">Payments</h2></div>
+      </div>
+
+      <div class="pay-sum" id="paySum"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="pm-filterbar">
+            <div class="input-affix"><span data-icon="search"></span><input class="input" id="paySearch" placeholder="Search booking or guest..."></div>
+            <select class="input" id="payStatus" style="width:auto"><option value="">All statuses</option><option>paid</option><option>unpaid</option><option>refunded</option></select>
+            <select class="input" id="payBkStatus" style="width:auto"><option value="">All booking statuses</option><option>confirmed</option><option>active</option><option>completed</option><option>pending</option><option>cancelled</option></select>
+            <select class="input" id="payMethod" style="width:auto"><option value="">All methods</option><option value="card">Card</option><option value="bkash">bKash</option><option value="nagad">Nagad</option></select>            <input class="input" type="date" id="payFrom" title="From date" style="width:auto">
+            <input class="input" type="date" id="payTo" title="To date" style="width:auto">
+            <input class="input" type="number" id="payMin" placeholder="Min $" title="Minimum amount" style="width:110px">
+            <input class="input" type="number" id="payMax" placeholder="Max $" title="Maximum amount" style="width:110px">
+            <button class="btn btn-soft" id="payReset">Reset</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:0;box-shadow:none;border-radius:0"><table class="tbl" id="payTable"></table></div>
+        <div id="payPager" style="padding:1rem 1rem 0"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  window.__SERVER_BOOKINGS__ = /*[[${bookingsForJs}]]*/ [];
+  /*]]>*/
+</script>
+<script th:src="@{/js/core.js}"></script>
+<script>
+
+  App.boot({guard:'staff'});
+  App.renderDashChrome('ap','Payment Management',[{label:'Dashboard',href:'/admin/dashboard'},{label:'Payments',href:'#'}]);
+  (function(){
+    var st={q:'',status:'',bkStatus:'',method:'',from:'',to:'',min:'',max:'',page:1,per:7};
+    var bookings=App.getBookings();
+    var PAY_B={paid:'b-success',unpaid:'b-warning',refunded:'b-plain',failed:'b-danger'};
+    var METHOD_LABELS={card:'Card',bkash:'bKash',nagad:'Nagad'};
+    var METHOD_ICONS={card:'card',bkash:'wallet',nagad:'wallet'};
+
+    function payOf(b){ return b.payment==='paid'?'paid':(b.status==='cancelled'?'refunded':'unpaid'); }
+    // Guest name comes straight from the booking's own "guest" field
+    // (BookingJsonMapper#toFrontendMap -> guestName column) - never look it
+    // up via userId, since anonymous/walk-in bookings have no linked user
+    // and App.userById() only knows about client-side demo data anyway.
+    function guestNameOf(b){ return b.guest||'Guest'; }
+    function methodLabel(b){ return b.paymentMethod ? (METHOD_LABELS[b.paymentMethod]||App.cap(b.paymentMethod)) : '—'; }
+    function methodIcon(b){ return b.paymentMethod ? (METHOD_ICONS[b.paymentMethod]||'card') : 'card'; }
+
+    function sum(f){ return bookings.reduce(function(a,b){return a+(f(b)?(b.totalAmount||0):0);},0); }
+    function filteredAll(f){
+      return bookings.filter(function(b){
+        if(f.status&&payOf(b)!==f.status)return false;
+        if(f.bkStatus&&b.status!==f.bkStatus)return false;
+        if(f.method&&(b.paymentMethod||'')!==f.method.toLowerCase())return false;
+        if(f.from&&(!b.createdAt||b.createdAt<f.from))return false;
+        if(f.to&&(!b.createdAt||b.createdAt>f.to))return false;
+        if(f.min&&(b.totalAmount||0)< +f.min)return false;
+        if(f.max&&(b.totalAmount||0)> +f.max)return false;
+        if(f.q){ var h=(b.bookingId+' '+guestNameOf(b)).toLowerCase(); if(h.indexOf(f.q.toLowerCase())===-1)return false; }
+        return true;
+      });
+    }
+    function refreshSum(){
+      var res=filteredAll(st);
+      document.getElementById('paySum').innerHTML=[
+        ['Revenue collected',App.money(sum(function(b){return payOf(b)==='paid';})),'paid',bookings.filter(function(b){return payOf(b)==='paid';}).length],
+        ['Pending',App.money(sum(function(b){return payOf(b)==='unpaid';})),'unpaid',bookings.filter(function(b){return payOf(b)==='unpaid';}).length],
+        ['Refunded',App.money(sum(function(b){return payOf(b)==='refunded';})),'refunded',bookings.filter(function(b){return payOf(b)==='refunded';}).length],
+        ['Outstanding',App.money(sum(function(b){return payOf(b)==='unpaid'&&b.status!=='cancelled';})),'failed',bookings.filter(function(b){return payOf(b)==='unpaid'&&b.status!=='cancelled';}).length]
+      ].map(function(x){ return '<div class="ps-card"><div class="ps-lab">'+x[0]+'</div><div class="ps-num">'+x[1]+'</div><div class="ps-row" style="margin-top:.5rem"><span class="badge '+PAY_B[x[2]]+'">'+App.cap(x[2])+'</span><span class="text-sm" style="color:var(--muted)">'+x[3]+'</span></div></div>'; }).join('');
+    }
+    function render(){
+      var res=filteredAll(st).sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); });
+      refreshSum();
+      var pages=Math.max(1,Math.ceil(res.length/st.per));
+      if(st.page>pages)st.page=pages;
+      var slice=res.slice((st.page-1)*st.per,st.page*st.per);
+      var tbl=document.getElementById('payTable');
+      if(!res.length){ tbl.innerHTML='<tr><td colspan="8" style="padding:2.4rem;text-align:center;color:var(--muted)">No transactions match your filters.</td></tr>'; }
+      else tbl.innerHTML='<thead><tr><th>Booking</th><th>Guest</th><th>Method</th><th>Amount</th><th>Booking</th><th>Payment</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>'+
+              slice.map(function(b){
+                return '<tr data-id="'+b.id+'">'+
+                        '<td class="text-sm strong primary-id">'+b.bookingId+'</td>'+
+                        '<td><div class="cell-user"><div class="avatar" style="background:var(--grad)">'+initials(guestNameOf(b))+'</div><div class="nm" style="font-size:.85rem">'+App.esc(guestNameOf(b))+'</div></div></td>'+
+                        '<td><span class="pm-chip">'+App.icon(methodIcon(b),'icon-sm')+' '+App.esc(methodLabel(b))+'</span></td>'+
+                        '<td class="amt"><b>'+App.money(b.totalAmount||0)+'</b></td>'+
+                        '<td><span class="badge '+stBk(b.status)+'">'+App.cap(b.status)+'</span></td>'+
+                        '<td><span class="badge '+PAY_B[payOf(b)]+'">'+App.cap(payOf(b))+'</span></td>'+
+                        '<td class="text-sm" style="color:var(--muted)">'+App.dateStr(b.createdAt)+'</td>'+
+                        '<td class="actions">'+
+                        '<button class="btn btn-outline btn-sm" data-mark="'+b.id+'" title="Toggle paid/unpaid">'+App.icon('check','icon')+' Mark</button>'+
+                        '<button class="btn btn-ghost btn-sm" data-receipt="'+b.id+'" title="View details">'+App.icon('eye','icon')+'</button>'+
+                        '</td></tr>';
+              }).join('')+'</tbody>';
+      document.getElementById('payPager').innerHTML=App.pagination(st.page,pages);
+      App.initPager(document.getElementById('payPager'),function(p){ st.page=p; render(); });
+    }
+    function stBk(s){ return {confirmed:'b-primary',active:'b-success',completed:'b-info',pending:'b-warning',cancelled:'b-danger'}[s]||'b-plain'; }
+    function initials(n){ return (n||'G').split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase(); }
+
+    function downloadTransaction(b){
+      var lines=['TRANSACTION RECEIPT','===================','Booking: '+b.bookingId,'Guest: '+guestNameOf(b),'Check-in: '+App.dateStr(b.checkIn),'Check-out: '+App.dateStr(b.checkOut),'Room rate: '+App.money(b.roomPrice||0)+' / night','Nights: '+(b.nights||0),'Discount: -'+App.money(b.discountAmount||0),'Extras & services: '+App.money(b.servicesTotal||0),'Tax: '+App.money(b.taxAmount||0),'Total: '+App.money(b.totalAmount||0),'Method: '+methodLabel(b),'Payment status: '+App.cap(payOf(b)),'Promo code: '+(b.promoCode||'—')];
+      var blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='transaction-'+b.bookingId+'.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    }
+    function closeTransactionDetails(){var el=document.getElementById('txModal');if(el)el.remove();}
+    function showTransactionDetails(b){
+      closeTransactionDetails();
+      var el=document.createElement('div');el.id='txModal';el.className='tx-modal-backdrop';
+      el.innerHTML='<section class="tx-modal" role="dialog" aria-modal="true"><div class="tx-head"><div><h3 class="tx-title">Transaction '+App.esc(b.bookingId)+'</h3><p class="tx-sub">'+App.dateStr(b.createdAt)+' · '+App.esc(guestNameOf(b))+'</p></div><button class="tx-close" data-tx-close aria-label="Close">&times;</button></div><div class="tx-grid"><div class="tx-col"><h4>Guest & booking</h4><div class="tx-row"><span>Guest</span><strong>'+App.esc(guestNameOf(b))+'</strong></div><div class="tx-row"><span>Booking code</span><strong>'+App.esc(b.bookingId)+'</strong></div><div class="tx-row"><span>Check-in</span><strong>'+App.dateStr(b.checkIn)+'</strong></div><div class="tx-row"><span>Check-out</span><strong>'+App.dateStr(b.checkOut)+'</strong></div></div><div class="tx-col"><h4>Stay & charges</h4><div class="tx-row"><span>Room rate</span><strong>'+App.money(b.roomPrice||0)+' / night</strong></div><div class="tx-row"><span>Nights</span><strong>'+(b.nights||0)+'</strong></div><div class="tx-row"><span>Discount</span><strong>-'+App.money(b.discountAmount||0)+'</strong></div><div class="tx-row"><span>Extras & services</span><strong>'+App.money(b.servicesTotal||0)+'</strong></div><div class="tx-row"><span>Tax</span><strong>'+App.money(b.taxAmount||0)+'</strong></div></div><div class="tx-col"><h4>Payment</h4><div class="tx-row"><span>Method</span><strong>'+App.esc(methodLabel(b))+'</strong></div><div class="tx-row"><span>Status</span><strong><span class="badge '+PAY_B[payOf(b)]+'">'+App.cap(payOf(b))+'</span></strong></div><div class="tx-row"><span>Promo code</span><strong>'+App.esc(b.promoCode||'—')+'</strong></div></div></div><div class="tx-total"><div><small>Total transaction amount</small><br><strong>'+App.money(b.totalAmount||0)+'</strong></div><span class="badge b-success">'+App.cap(payOf(b))+'</span></div><div class="tx-actions"><button class="btn btn-soft" data-tx-close>Close</button><button class="btn btn-primary" data-tx-download>'+App.icon('download','icon')+' Download transaction</button></div></section>';
+      document.body.appendChild(el);el.addEventListener('click',function(e){if(e.target===el||e.target.closest('[data-tx-close]'))closeTransactionDetails();if(e.target.closest('[data-tx-download]'))downloadTransaction(b);});
+    }
+
+    document.getElementById('payTable').addEventListener('click',function(e){
+      var mark=e.target.closest('[data-mark]'), rc=e.target.closest('[data-receipt]');
+      if(!mark&&!rc)return;
+      var id=mark?mark.dataset.mark:rc.dataset.receipt;
+      var b=bookings.find(function(x){return String(x.id)===id;});
+      if(mark){
+        var willBePaid=b?(b.payment!=='paid'):true;
+        App.openConfirm(
+                willBePaid?'Mark this booking as paid?':'Mark this booking as unpaid?',
+                b?('Booking '+b.bookingId+' \u2022 '+App.money(b.totalAmount||0)+' will be marked '+(willBePaid?'PAID':'UNPAID')+'.'):'This will toggle the payment status.',
+                {confirmText:willBePaid?'Mark as paid':'Mark as unpaid'}
+        ).then(function(ok){
+          if(!ok)return;
+          var form=document.createElement('form');
+          form.method='POST'; form.action='/admin/bookings/'+id+'/toggle-payment'; form.style.display='none';
+          document.body.appendChild(form);
+          form.submit();
+        });
+      }
+      if(rc){ showTransactionDetails(b); }
+    });
+    document.getElementById('paySearch').addEventListener('input',App.debounce(function(){ st.q=this.value; st.page=1; render(); },250));
+    document.getElementById('payStatus').addEventListener('change',function(){ st.status=this.value; st.page=1; render(); });
+    document.getElementById('payBkStatus').addEventListener('change',function(){ st.bkStatus=this.value; st.page=1; render(); });
+    document.getElementById('payMethod').addEventListener('change',function(){ st.method=this.value; st.page=1; render(); });
+    document.getElementById('payFrom').addEventListener('change',function(){ st.from=this.value; st.page=1; render(); });
+    document.getElementById('payTo').addEventListener('change',function(){ st.to=this.value; st.page=1; render(); });
+    document.getElementById('payMin').addEventListener('change',function(){ st.min=this.value; st.page=1; render(); });
+    document.getElementById('payMax').addEventListener('change',function(){ st.max=this.value; st.page=1; render(); });
+    document.getElementById('payReset').addEventListener('click',function(){
+      st={q:'',status:'',bkStatus:'',method:'',from:'',to:'',min:'',max:'',page:1,per:7};
+      ['paySearch','payStatus','payBkStatus','payMethod','payFrom','payTo','payMin','payMax'].forEach(function(id){ var el=document.getElementById(id); el.value=''; });
+      render();
+    });
+    render();
+  })();
+</script>
+</body>
+</html>
+
+
