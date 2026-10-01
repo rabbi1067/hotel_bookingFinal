@@ -98,23 +98,24 @@
         Password updated successfully. Please sign in with your new password.
       </div>
 
-      <!-- ===== Quick demo login ===== -->
+      <!-- ===== Quick demo login (public view-only accounts, session-isolated) ===== -->
       <div class="demo-login">
         <div class="demo-login-label">Quick demo login</div>
         <div class="demo-login-grid">
-          <button type="button" class="demo-login-btn" data-demo-email="superadmin@hotel.com" data-demo-pass="Super123">
-            Super Admin<small>superadmin@hotel.com</small>
+          <button type="button" class="demo-login-btn" data-demo-email="demo-superadmin@hotel.com" data-demo-pass="Demo123">
+            Super Admin<small>demo-superadmin@hotel.com</small>
           </button>
-          <button type="button" class="demo-login-btn" data-demo-email="aa@gmail.com" data-demo-pass="123456">
-            Admin<small>aa@gmail.com</small>
+          <button type="button" class="demo-login-btn" data-demo-email="demo-admin@hotel.com" data-demo-pass="Demo123">
+            Admin<small>demo-admin@hotel.com</small>
           </button>
-          <button type="button" class="demo-login-btn" data-demo-email="s@gmail.com" data-demo-pass="123456">
-            Staff<small>s@gmail.com</small>
+          <button type="button" class="demo-login-btn" data-demo-email="demo-staff@hotel.com" data-demo-pass="Demo123">
+            Staff<small>demo-staff@hotel.com</small>
           </button>
-          <button type="button" class="demo-login-btn" data-demo-email="g@gmail.com" data-demo-pass="123456">
-            Guest<small>g@gmail.com</small>
+          <button type="button" class="demo-login-btn" data-demo-email="demo-guest@hotel.com" data-demo-pass="Demo123">
+            Guest<small>demo-guest@hotel.com</small>
           </button>
         </div>
+        <div class="demo-note">Demo mode: full preview, changes stay in your session and are cleared on logout.</div>
       </div>
 
       <form th:action="@{/login}" method="post" novalidate>
