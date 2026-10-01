@@ -27,7 +27,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createSuperAdmin() {
-        String email = System.getenv().getOrDefault("SUPER_ADMIN_EMAIL", "superadmin@hotel.com");
+        String email = System.getenv().getOrDefault("SUPER_ADMIN_EMAIL", "fazlerabbicse65@gmail.com");
         String password = System.getenv().getOrDefault("SUPER_ADMIN_PASSWORD", "Super123");
 
         if (userRepository.existsByEmailIgnoreCase(email)) {
