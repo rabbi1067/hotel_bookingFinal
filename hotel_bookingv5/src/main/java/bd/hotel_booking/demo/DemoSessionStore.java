@@ -136,11 +136,11 @@ public class DemoSessionStore implements Serializable {
         String key = key(type);
         Map<Long, Object> addedBucket = added.get(key);
         if (addedBucket != null && addedBucket.containsKey(id)) {
-            return Optional.of((T) addedBucket.get(id));
+            return Optional.of(addedBucket.get(id));
         }
         Map<Long, Object> updatedBucket = updated.get(key);
         if (updatedBucket != null && updatedBucket.containsKey(id)) {
-            return Optional.of((T) updatedBucket.get(id));
+            return Optional.of(updatedBucket.get(id));
         }
         return Optional.empty();
     }
