@@ -23,10 +23,10 @@ import java.util.Optional;
  * Intercepts EVERY Spring-Data repository call. For real users it is a pure
  * pass-through (zero behaviour change). For demo users:
  * <ul>
- *   <li><b>save*/flush</b> - staged in {@link DemoSessionStore}, JPA detached so
+ *   <li><b>save and flush</b> - staged in {@link DemoSessionStore}, JPA detached so
  *       dirty-checking can NOT flush to Postgres.</li>
- *   <li><b>delete*</b> - recorded in session, Postgres untouched.</li>
- *   <li><b>find*/list*/count*/exists*</b> - real Postgres rows first (so live
+ *   <li><b>delete methods</b> - recorded in session, Postgres untouched.</li>
+ *   <li><b>find, list, count and exists methods</b> - real Postgres rows first (so live
  *       admin changes stay visible), overlay applied on top.</li>
  * </ul>
  * Existing services / controllers / repositories are NOT modified.
