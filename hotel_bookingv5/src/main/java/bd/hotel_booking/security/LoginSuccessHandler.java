@@ -22,6 +22,28 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
                                         jakarta.servlet.http.HttpServletResponse response,
                                         Authentication authentication) throws java.io.IOException {
         String email = authentication.getName();
+        // ---- public demo accounts: no DB lookup, session-isolated preview ----
+        bd.hotel_booking.demo.DemoAccount demo = bd.hotel_booking.demo.DemoAccount.fromEmail(email);
+        if (demo != null) {
+            String demoPayload = "{\"id\":-1"
+                    + ",\"name\":\"" + escapeJson(demo.displayName())
+                    + "\",\"email\":\"" + escapeJson(demo.email())
+                    + "\",\"role\":\"" + demo.role().name()
+                    + "\",\"image\":\"\"}";
+
+            Cookie demoCookie = new Cookie("hv_user", URLEncoder.encode(demoPayload, StandardCharsets.UTF_8));
+            demoCookie.setPath("/");
+            demoCookie.setMaxAge(60 * 60 * 24 * 7);
+            demoCookie.setHttpOnly(false);
+            response.addCookie(demoCookie);
+
+            String demoTarget = switch (demo.role().name()) {
+                case "SUPER_ADMIN", "ADMIN", "STAFF" -> "/admin/dashboard";
+                default -> "/user/dashboard";
+            };
+            response.sendRedirect(demoTarget);
+            return;
+        }
         User user = userService.findByEmail(email);
         String role = (user != null && user.getRole() != null) ? user.getRole().name() : "GUEST";
         String name = (user != null && user.getName() != null) ? user.getName() : email;
