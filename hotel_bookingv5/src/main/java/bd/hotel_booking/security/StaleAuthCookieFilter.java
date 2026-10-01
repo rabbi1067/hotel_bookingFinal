@@ -45,8 +45,24 @@ public class StaleAuthCookieFilter extends OncePerRequestFilter {
             stale.setHttpOnly(false);
             response.addCookie(stale);
         } else if (!hasCookie && isReallyAuthenticated) {
-            Optional<User> user = userRepository.findByEmailIgnoreCase(auth.getName());
-            user.ifPresent(u -> setUserCookie(response, u));
+            // ---- demo visitors: rebuild cookie from DemoAccount, never hit Postgres ----
+            bd.hotel_booking.demo.DemoAccount demo =
+                    bd.hotel_booking.demo.DemoAccount.fromEmail(auth.getName());
+            if (demo != null) {
+                String payload = "{\"id\":-1"
+                        + ",\"name\":\"" + escape(demo.displayName())
+                        + "\",\"email\":\"" + escape(demo.email())
+                        + "\",\"role\":\"" + demo.role().name()
+                        + "\",\"image\":\"\"}";
+                Cookie cookie = new Cookie(COOKIE_NAME, URLEncoder.encode(payload, StandardCharsets.UTF_8));
+                cookie.setPath("/");
+                cookie.setMaxAge(60 * 60 * 24 * 7);
+                cookie.setHttpOnly(false);
+                response.addCookie(cookie);
+            } else {
+                Optional<User> user = userRepository.findByEmailIgnoreCase(auth.getName());
+                user.ifPresent(u -> setUserCookie(response, u));
+            }
         }
 
         chain.doFilter(request, response);
